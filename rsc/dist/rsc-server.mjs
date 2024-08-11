@@ -2045,6 +2045,214 @@ async function streamUI({
 
 // rsc/stream-ui/stream-ui-with-process.tsx
 import { safeParseJSON as safeParseJSON2 } from "@ai-sdk/provider-utils";
+var defaultTextRenderer2 = ({ content }) => content;
+async function streamUIWithProcess({
+  model,
+  tools,
+  toolChoice,
+  system,
+  prompt,
+  messages,
+  maxRetries,
+  abortSignal,
+  headers,
+  initial,
+  text,
+  onFinish,
+  ...settings
+}) {
+  if (typeof model === "string") {
+    throw new Error(
+      "`model` cannot be a string in `streamUI`. Use the actual model instance instead."
+    );
+  }
+  if ("functions" in settings) {
+    throw new Error(
+      "`functions` is not supported in `streamUI`, use `tools` instead."
+    );
+  }
+  if ("provider" in settings) {
+    throw new Error(
+      "`provider` is no longer needed in `streamUI`. Use `model` instead."
+    );
+  }
+  if (tools) {
+    for (const [name8, tool] of Object.entries(tools)) {
+      if ("render" in tool) {
+        throw new Error(
+          "Tool definition in `streamUI` should not have `render` property. Use `generate` instead. Found in tool: " + name8
+        );
+      }
+    }
+  }
+  const ui = createStreamableUI(initial);
+  const textRender = text || defaultTextRenderer2;
+  let finished;
+  async function render2({
+    args,
+    renderer,
+    streamableUI,
+    isLastCall = false
+  }) {
+    if (!renderer)
+      return;
+    const renderFinished = createResolvablePromise();
+    finished = finished ? finished.then(() => renderFinished.promise) : renderFinished.promise;
+    const rendererResult = renderer(...args);
+    if (isAsyncGenerator(rendererResult) || isGenerator(rendererResult)) {
+      while (true) {
+        const { done, value } = await rendererResult.next();
+        const node = await value;
+        if (isLastCall && done) {
+          streamableUI.done(node);
+        } else {
+          streamableUI.update(node);
+        }
+        if (done)
+          break;
+      }
+    } else {
+      const node = await rendererResult;
+      if (isLastCall) {
+        streamableUI.done(node);
+      } else {
+        streamableUI.update(node);
+      }
+    }
+    renderFinished.resolve(void 0);
+  }
+  const retry = retryWithExponentialBackoff({ maxRetries });
+  const validatedPrompt = getValidatedPrompt({ system, prompt, messages });
+  const result = await retry(
+    async () => model.doStream({
+      mode: {
+        type: "regular",
+        ...prepareToolsAndToolChoice({ tools, toolChoice })
+      },
+      ...prepareCallSettings(settings),
+      inputFormat: validatedPrompt.type,
+      prompt: await convertToLanguageModelPrompt({
+        prompt: validatedPrompt,
+        modelSupportsImageUrls: model.supportsImageUrls
+      }),
+      abortSignal,
+      headers
+    })
+  );
+  console.log(
+    "\u{1F601}openai",
+    JSON.stringify(
+      model.doStream({
+        mode: {
+          type: "regular",
+          ...prepareToolsAndToolChoice({ tools, toolChoice })
+        },
+        ...prepareCallSettings(settings),
+        inputFormat: validatedPrompt.type,
+        prompt: await convertToLanguageModelPrompt({
+          prompt: validatedPrompt,
+          modelSupportsImageUrls: model.supportsImageUrls
+        }),
+        abortSignal,
+        headers
+      })
+    )
+  );
+  const [stream, forkedStream] = result.stream.tee();
+  (async () => {
+    try {
+      let content = "";
+      let hasToolCall = false;
+      const reader = forkedStream.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done)
+          break;
+        switch (value.type) {
+          case "text-delta": {
+            content += value.textDelta;
+            render2({
+              renderer: textRender,
+              args: [{ content, done: false, delta: value.textDelta }],
+              streamableUI: ui
+            });
+            break;
+          }
+          case "tool-call-delta": {
+            hasToolCall = true;
+            break;
+          }
+          case "tool-call": {
+            const toolName = value.toolName;
+            if (!tools) {
+              throw new NoSuchToolError({ toolName });
+            }
+            const tool = tools[toolName];
+            if (!tool) {
+              throw new NoSuchToolError({
+                toolName,
+                availableTools: Object.keys(tools)
+              });
+            }
+            hasToolCall = true;
+            const parseResult = safeParseJSON2({
+              text: value.args,
+              schema: tool.parameters
+            });
+            if (parseResult.success === false) {
+              throw new InvalidToolArgumentsError({
+                toolName,
+                toolArgs: value.args,
+                cause: parseResult.error
+              });
+            }
+            render2({
+              renderer: tool.generate,
+              args: [
+                parseResult.value,
+                {
+                  toolName,
+                  toolCallId: value.toolCallId
+                }
+              ],
+              streamableUI: ui,
+              isLastCall: true
+            });
+            break;
+          }
+          case "error": {
+            throw value.error;
+          }
+          case "finish": {
+            onFinish == null ? void 0 : onFinish({
+              finishReason: value.finishReason,
+              usage: calculateCompletionTokenUsage(value.usage),
+              value: ui.value,
+              warnings: result.warnings,
+              rawResponse: result.rawResponse
+            });
+          }
+        }
+      }
+      if (!hasToolCall) {
+        render2({
+          renderer: textRender,
+          args: [{ content, done: true }],
+          streamableUI: ui,
+          isLastCall: true
+        });
+      }
+      await finished;
+    } catch (error) {
+      ui.error(error);
+    }
+  })();
+  return {
+    ...result,
+    stream,
+    value: ui.value
+  };
+}
 
 // rsc/provider.tsx
 import * as React2 from "react";
@@ -2122,6 +2330,7 @@ export {
   getAIState,
   getMutableAIState,
   render,
-  streamUI
+  streamUI,
+  streamUIWithProcess
 };
 //# sourceMappingURL=rsc-server.mjs.map
