@@ -160,8 +160,8 @@ type StreamableValueWrapper<T, E> = {
     done(...args: [T] | []): StreamableValueWrapper<T, E>;
 };
 
-type Streamable$1 = ReactNode | Promise<ReactNode>;
-type Renderer$1<T> = (props: T) => Streamable$1 | Generator<Streamable$1, Streamable$1, void> | AsyncGenerator<Streamable$1, Streamable$1, void>;
+type Streamable$2 = ReactNode | Promise<ReactNode>;
+type Renderer$2<T> = (props: T) => Streamable$2 | Generator<Streamable$2, Streamable$2, void> | AsyncGenerator<Streamable$2, Streamable$2, void>;
 /**
  * `render` is a helper function to create a streamable UI from some LLMs.
  * This API only supports OpenAI's GPT models with Function Calling and Assistants Tools,
@@ -188,7 +188,7 @@ declare function render<TS extends {
      */
     provider: OpenAI;
     messages: Parameters<typeof OpenAI.prototype.chat.completions.create>[0]['messages'];
-    text?: Renderer$1<{
+    text?: Renderer$2<{
         /**
          * The full text content from the model so far.
          */
@@ -207,14 +207,14 @@ declare function render<TS extends {
         [name in keyof TS]: {
             description?: string;
             parameters: TS[name];
-            render: Renderer$1<z.infer<TS[name]>>;
+            render: Renderer$2<z.infer<TS[name]>>;
         };
     };
     functions?: {
         [name in keyof FS]: {
             description?: string;
             parameters: FS[name];
-            render: Renderer$1<z.infer<FS[name]>>;
+            render: Renderer$2<z.infer<FS[name]>>;
         };
     };
     initial?: ReactNode;
@@ -488,6 +488,93 @@ type CoreToolChoice<TOOLS extends Record<string, unknown>> = 'auto' | 'none' | '
     toolName: keyof TOOLS;
 };
 
+type Streamable$1 = ReactNode | Promise<ReactNode>;
+type Renderer$1<T extends Array<any>> = (...args: T) => Streamable$1 | Generator<Streamable$1, Streamable$1, void> | AsyncGenerator<Streamable$1, Streamable$1, void>;
+type RenderTool$1<PARAMETERS extends z.ZodTypeAny = any> = {
+    description?: string;
+    parameters: PARAMETERS;
+    generate?: Renderer$1<[
+        z.infer<PARAMETERS>,
+        {
+            toolName: string;
+            toolCallId: string;
+        }
+    ]>;
+};
+type RenderText$1 = Renderer$1<[
+    {
+        /**
+         * The full text content from the model so far.
+         */
+        content: string;
+        /**
+         * The new appended text content from the model since the last `text` call.
+         */
+        delta: string;
+        /**
+         * Whether the model is done generating text.
+         * If `true`, the `content` will be the final output and this call will be the last.
+         */
+        done: boolean;
+    }
+]>;
+type RenderResult$1 = {
+    value: ReactNode;
+} & Awaited<ReturnType<LanguageModelV1['doStream']>>;
+/**
+ * `streamUI` is a helper function to create a streamable UI from LLMs.
+ */
+declare function streamUI<TOOLS extends {
+    [name: string]: z.ZodTypeAny;
+} = {}>({ model, tools, toolChoice, system, prompt, messages, maxRetries, abortSignal, headers, initial, text, onFinish, ...settings }: CallSettings & Prompt & {
+    /**
+     * The language model to use.
+     */
+    model: LanguageModelV1;
+    /**
+     * The tools that the model can call. The model needs to support calling tools.
+     */
+    tools?: {
+        [name in keyof TOOLS]: RenderTool$1<TOOLS[name]>;
+    };
+    /**
+     * The tool choice strategy. Default: 'auto'.
+     */
+    toolChoice?: CoreToolChoice<TOOLS>;
+    text?: RenderText$1;
+    initial?: ReactNode;
+    /**
+     * Callback that is called when the LLM response and the final object validation are finished.
+     */
+    onFinish?: (event: {
+        /**
+         * The reason why the generation finished.
+         */
+        finishReason: FinishReason;
+        /**
+         * The token usage of the generated response.
+         */
+        usage: CompletionTokenUsage;
+        /**
+         * The final ui node that was generated.
+         */
+        value: ReactNode;
+        /**
+         * Warnings from the model provider (e.g. unsupported settings)
+         */
+        warnings?: CallWarning[];
+        /**
+         * Optional raw response data.
+         */
+        rawResponse?: {
+            /**
+             * Response headers.
+             */
+            headers?: Record<string, string>;
+        };
+    }) => Promise<void> | void;
+}): Promise<RenderResult$1>;
+
 type Streamable = ReactNode | Promise<ReactNode>;
 type Renderer<T extends Array<any>> = (...args: T) => Streamable | Generator<Streamable, Streamable, void> | AsyncGenerator<Streamable, Streamable, void>;
 type RenderTool<PARAMETERS extends z.ZodTypeAny = any> = {
@@ -524,7 +611,7 @@ type RenderResult = {
 /**
  * `streamUI` is a helper function to create a streamable UI from LLMs.
  */
-declare function streamUI<TOOLS extends {
+declare function streamUIWithProcess<TOOLS extends {
     [name: string]: z.ZodTypeAny;
 } = {}>({ model, tools, toolChoice, system, prompt, messages, maxRetries, abortSignal, headers, initial, text, onFinish, ...settings }: CallSettings & Prompt & {
     /**
@@ -677,4 +764,4 @@ declare function useAIState<AI extends AIProvider = any>(key: keyof InferAIState
 declare function useActions<AI extends AIProvider = any>(): InferActions<AI, any>;
 declare function useSyncUIState(): () => Promise<void>;
 
-export { type StreamableValue, createAI, createStreamableUI, createStreamableValue, getAIState, getMutableAIState, readStreamableValue, render, streamUI, useAIState, useActions, useStreamableValue, useSyncUIState, useUIState };
+export { type StreamableValue, createAI, createStreamableUI, createStreamableValue, getAIState, getMutableAIState, readStreamableValue, render, streamUI, streamUIWithProcess, useAIState, useActions, useStreamableValue, useSyncUIState, useUIState };
