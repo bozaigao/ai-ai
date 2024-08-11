@@ -2043,6 +2043,9 @@ async function streamUI({
   };
 }
 
+// rsc/stream-ui/stream-ui-with-process.tsx
+import { safeParseJSON as safeParseJSON2 } from "@ai-sdk/provider-utils";
+
 // rsc/provider.tsx
 import * as React2 from "react";
 import { InternalAIProvider } from "./rsc-shared.mjs";

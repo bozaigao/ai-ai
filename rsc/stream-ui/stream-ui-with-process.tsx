@@ -76,9 +76,10 @@ const defaultTextRenderer: RenderText = ({ content }: { content: string }) =>
 /**
  * `streamUI` is a helper function to create a streamable UI from LLMs.
  */
-export async function streamUI<
+export async function streamUIWithProcess<
   TOOLS extends { [name: string]: z.ZodTypeAny } = {},
 >({
+  model,
   tools,
   toolChoice,
   system,
@@ -93,6 +94,11 @@ export async function streamUI<
   ...settings
 }: CallSettings &
   Prompt & {
+    /**
+     * The language model to use.
+     */
+    model: LanguageModelV1;
+
     /**
      * The tools that the model can call. The model needs to support calling tools.
      */
@@ -138,6 +144,12 @@ export async function streamUI<
       };
     }) => Promise<void> | void;
   }): Promise<RenderResult> {
+  // TODO: Remove these errors after the experimental phase.
+  if (typeof model === 'string') {
+    throw new Error(
+      '`model` cannot be a string in `streamUI`. Use the actual model instance instead.',
+    );
+  }
   if ('functions' in settings) {
     throw new Error(
       '`functions` is not supported in `streamUI`, use `tools` instead.',
@@ -218,21 +230,41 @@ export async function streamUI<
 
   const retry = retryWithExponentialBackoff({ maxRetries });
   const validatedPrompt = getValidatedPrompt({ system, prompt, messages });
-  const result = await retry(async () => ''
-    // model.doStream({
-    //   mode: {
-    //     type: 'regular',
-    //     ...prepareToolsAndToolChoice({ tools, toolChoice }),
-    //   },
-    //   ...prepareCallSettings(settings),
-    //   inputFormat: validatedPrompt.type,
-    //   prompt: await convertToLanguageModelPrompt({
-    //     prompt: validatedPrompt,
-    //     modelSupportsImageUrls: model.supportsImageUrls,
-    //   }),
-    //   abortSignal,
-    //   headers,
-    // }),
+  const result = await retry(async () =>
+    model.doStream({
+      mode: {
+        type: 'regular',
+        ...prepareToolsAndToolChoice({ tools, toolChoice }),
+      },
+      ...prepareCallSettings(settings),
+      inputFormat: validatedPrompt.type,
+      prompt: await convertToLanguageModelPrompt({
+        prompt: validatedPrompt,
+        modelSupportsImageUrls: model.supportsImageUrls,
+      }),
+      abortSignal,
+      headers,
+    }),
+  );
+
+  console.log(
+    '😁openai',
+    JSON.stringify(
+      model.doStream({
+        mode: {
+          type: 'regular',
+          ...prepareToolsAndToolChoice({ tools, toolChoice }),
+        },
+        ...prepareCallSettings(settings),
+        inputFormat: validatedPrompt.type,
+        prompt: await convertToLanguageModelPrompt({
+          prompt: validatedPrompt,
+          modelSupportsImageUrls: model.supportsImageUrls,
+        }),
+        abortSignal,
+        headers,
+      }),
+    ),
   );
 
   // For the stream and consume it asynchronously:
