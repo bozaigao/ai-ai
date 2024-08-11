@@ -1,0 +1,161 @@
+
+> ai@3.3.5 build /Users/yanbo.he/Desktop/AI/ai/packages/ai
+> tsup && cat react/dist/index.server.d.ts >> react/dist/index.d.ts
+
+[34mCLI[39m Building entry: streams/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v7.3.0
+[34mCLI[39m Using tsup config: /Users/yanbo.he/Desktop/AI/ai/packages/ai/tsup.config.ts
+[34mCLI[39m Building entry: prompts/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v7.3.0
+[34mCLI[39m Using tsup config: /Users/yanbo.he/Desktop/AI/ai/packages/ai/tsup.config.ts
+[34mCLI[39m Building entry: react/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v7.3.0
+[34mCLI[39m Using tsup config: /Users/yanbo.he/Desktop/AI/ai/packages/ai/tsup.config.ts
+[34mCLI[39m Building entry: react/index.server.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v7.3.0
+[34mCLI[39m Using tsup config: /Users/yanbo.he/Desktop/AI/ai/packages/ai/tsup.config.ts
+[34mCLI[39m Building entry: svelte/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v7.3.0
+[34mCLI[39m Using tsup config: /Users/yanbo.he/Desktop/AI/ai/packages/ai/tsup.config.ts
+[34mCLI[39m Building entry: vue/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v7.3.0
+[34mCLI[39m Using tsup config: /Users/yanbo.he/Desktop/AI/ai/packages/ai/tsup.config.ts
+[34mCLI[39m Building entry: solid/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v7.3.0
+[34mCLI[39m Using tsup config: /Users/yanbo.he/Desktop/AI/ai/packages/ai/tsup.config.ts
+[34mCLI[39m Building entry: rsc/rsc-shared.mts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v7.3.0
+[34mCLI[39m Using tsup config: /Users/yanbo.he/Desktop/AI/ai/packages/ai/tsup.config.ts
+[34mCLI[39m Building entry: rsc/rsc-server.ts, rsc/rsc-client.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v7.3.0
+[34mCLI[39m Using tsup config: /Users/yanbo.he/Desktop/AI/ai/packages/ai/tsup.config.ts
+[34mCLI[39m Building entry: rsc/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v7.3.0
+[34mCLI[39m Using tsup config: /Users/yanbo.he/Desktop/AI/ai/packages/ai/tsup.config.ts
+[34mCLI[39m Target: es2018
+[34mCJS[39m Build start
+[34mESM[39m Build start
+[34mCLI[39m Target: es2018
+[34mCJS[39m Build start
+[34mESM[39m Build start
+[34mCLI[39m Target: es2018
+[34mCJS[39m Build start
+[34mESM[39m Build start
+[34mCLI[39m Target: es2018
+[34mCJS[39m Build start
+[34mESM[39m Build start
+[34mCLI[39m Target: es2018
+[34mCJS[39m Build start
+[34mESM[39m Build start
+[34mCLI[39m Target: es2018
+[34mCJS[39m Build start
+[34mESM[39m Build start
+[34mCLI[39m Target: es2018
+[34mESM[39m Build start
+[34mCLI[39m Target: es2018
+[34mESM[39m Build start
+[34mCLI[39m Target: es2018
+[34mCJS[39m Build start
+[34mESM[39m Build start
+[34mCLI[39m Target: es2018
+[34mCJS[39m Build start
+[32mCJS[39m [1mrsc/dist/index.mjs [22m[32m754.00 B[39m
+[32mCJS[39m ⚡️ Build success in 13ms
+[32mCJS[39m [1msolid/dist/index.js     [22m[32m1.23 KB[39m
+[32mCJS[39m [1msolid/dist/index.js.map [22m[32m733.00 B[39m
+[32mCJS[39m ⚡️ Build success in 19ms
+[32mESM[39m [1mvue/dist/index.mjs     [22m[32m332.00 B[39m
+[32mESM[39m [1mvue/dist/index.mjs.map [22m[32m870.00 B[39m
+[32mESM[39m ⚡️ Build success in 22ms
+[32mCJS[39m [1mvue/dist/index.js     [22m[32m1.31 KB[39m
+[32mCJS[39m [1mvue/dist/index.js.map [22m[32m937.00 B[39m
+[32mCJS[39m ⚡️ Build success in 22ms
+[32mCJS[39m [1mreact/dist/index.js     [22m[32m1.48 KB[39m
+[32mCJS[39m [1mreact/dist/index.js.map [22m[32m847.00 B[39m
+[32mCJS[39m ⚡️ Build success in 24ms
+[32mCJS[39m [1mreact/dist/index.server.js     [22m[32m1.91 KB[39m
+[32mCJS[39m [1mreact/dist/index.server.js.map [22m[32m1.62 KB[39m
+[32mCJS[39m ⚡️ Build success in 22ms
+[32mCJS[39m [1mprompts/dist/index.js     [22m[32m5.62 KB[39m
+[32mCJS[39m [1mprompts/dist/index.js.map [22m[32m13.73 KB[39m
+[32mCJS[39m ⚡️ Build success in 20ms
+[32mESM[39m [1mreact/dist/index.server.mjs     [22m[32m738.00 B[39m
+[32mESM[39m [1mreact/dist/index.server.mjs.map [22m[32m1.55 KB[39m
+[32mESM[39m ⚡️ Build success in 22ms
+[32mESM[39m [1msolid/dist/index.mjs     [22m[32m257.00 B[39m
+[32mESM[39m [1msolid/dist/index.mjs.map [22m[32m673.00 B[39m
+[32mESM[39m ⚡️ Build success in 20ms
+[32mESM[39m [1mreact/dist/index.mjs     [22m[32m503.00 B[39m
+[32mESM[39m [1mreact/dist/index.mjs.map [22m[32m753.00 B[39m
+[32mESM[39m ⚡️ Build success in 25ms
+[32mESM[39m [1mprompts/dist/index.mjs     [22m[32m4.17 KB[39m
+[32mESM[39m [1mprompts/dist/index.mjs.map [22m[32m13.56 KB[39m
+[32mESM[39m ⚡️ Build success in 24ms
+[32mESM[39m [1mrsc/dist/rsc-shared.mjs     [22m[32m8.96 KB[39m
+[32mESM[39m [1mrsc/dist/rsc-shared.mjs.map [22m[32m18.27 KB[39m
+[32mESM[39m ⚡️ Build success in 24ms
+[32mCJS[39m [1msvelte/dist/index.js     [22m[32m32.41 KB[39m
+[32mCJS[39m [1msvelte/dist/index.js.map [22m[32m64.46 KB[39m
+[32mCJS[39m ⚡️ Build success in 44ms
+[32mESM[39m [1msvelte/dist/index.mjs     [22m[32m30.63 KB[39m
+[32mESM[39m [1msvelte/dist/index.mjs.map [22m[32m64.32 KB[39m
+[32mESM[39m ⚡️ Build success in 46ms
+[32mCJS[39m [1mdist/index.js     [22m[32m146.68 KB[39m
+[32mCJS[39m [1mdist/index.js.map [22m[32m325.28 KB[39m
+[32mCJS[39m ⚡️ Build success in 163ms
+[32mESM[39m [1mdist/index.mjs     [22m[32m141.04 KB[39m
+[32mESM[39m [1mdist/index.mjs.map [22m[32m324.96 KB[39m
+[32mESM[39m ⚡️ Build success in 163ms
+[32mESM[39m [1mrsc/dist/rsc-client.mjs     [22m[32m316.00 B[39m
+[32mESM[39m [1mrsc/dist/rsc-server.mjs     [22m[32m62.76 KB[39m
+[32mESM[39m [1mrsc/dist/rsc-client.mjs.map [22m[32m316.00 B[39m
+[32mESM[39m [1mrsc/dist/rsc-server.mjs.map [22m[32m153.91 KB[39m
+[32mESM[39m ⚡️ Build success in 169ms
+[34mDTS[39m Build start
+[34mDTS[39m Build start
+[34mDTS[39m Build start
+[34mDTS[39m Build start
+[34mDTS[39m Build start
+[34mDTS[39m Build start
+[34mDTS[39m Build start
+[34mDTS[39m Build start
+[34mDTS[39m Build start
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 2221ms
+[32mDTS[39m [1mreact/dist/index.server.d.ts  [22m[32m437.00 B[39m
+[32mDTS[39m [1mreact/dist/index.server.d.mts [22m[32m437.00 B[39m
+[32mDTS[39m ⚡️ Build success in 2320ms
+[32mDTS[39m [1mreact/dist/index.d.ts  [22m[32m714.00 B[39m
+[32mDTS[39m [1mreact/dist/index.d.mts [22m[32m714.00 B[39m
+[32mDTS[39m ⚡️ Build success in 2435ms
+[32mDTS[39m [1mprompts/dist/index.d.ts  [22m[32m7.33 KB[39m
+[32mDTS[39m [1mprompts/dist/index.d.mts [22m[32m7.33 KB[39m
+[32mDTS[39m ⚡️ Build success in 2489ms
+[32mDTS[39m [1msolid/dist/index.d.ts  [22m[32m447.00 B[39m
+[32mDTS[39m [1msolid/dist/index.d.mts [22m[32m447.00 B[39m
+[32mDTS[39m ⚡️ Build success in 2636ms
+[32mDTS[39m [1mvue/dist/index.d.ts  [22m[32m627.00 B[39m
+[32mDTS[39m [1mvue/dist/index.d.mts [22m[32m627.00 B[39m
+[32mDTS[39m ⚡️ Build success in 2812ms
+[32mDTS[39m [1msvelte/dist/index.d.ts  [22m[32m6.76 KB[39m
+[32mDTS[39m [1msvelte/dist/index.d.mts [22m[32m6.76 KB[39m
+[32mDTS[39m ⚡️ Build success in 2809ms
+[32mDTS[39m [1mrsc/dist/rsc-shared.d.mts [22m[32m4.14 KB[39m
+[32mDTS[39m ⚡️ Build success in 3460ms
+[32mDTS[39m [1mdist/index.d.ts  [22m[32m94.89 KB[39m
+[32mDTS[39m [1mdist/index.d.mts [22m[32m94.89 KB[39m
+[32mDTS[39m ⚡️ Build success in 3530ms
+[32mDTS[39m [1mrsc/dist/index.d.ts [22m[32m22.35 KB[39m
+[32mDTS[39m ⚡️ Build success in 3799ms
+[32mDTS[39m [1mrsc/dist/rsc-client.d.mts [22m[32m128.00 B[39m
+[32mDTS[39m [1mrsc/dist/rsc-server.d.mts [22m[32m19.89 KB[39m
