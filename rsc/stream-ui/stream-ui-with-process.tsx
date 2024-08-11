@@ -250,20 +250,7 @@ export async function streamUIWithProcess<
   console.log(
     '😁openai',
     JSON.stringify(
-      model.doStream({
-        mode: {
-          type: 'regular',
-          ...prepareToolsAndToolChoice({ tools, toolChoice }),
-        },
-        ...prepareCallSettings(settings),
-        inputFormat: validatedPrompt.type,
-        prompt: await convertToLanguageModelPrompt({
-          prompt: validatedPrompt,
-          modelSupportsImageUrls: model.supportsImageUrls,
-        }),
-        abortSignal,
-        headers,
-      }),
+      result,
     ),
   );
 
