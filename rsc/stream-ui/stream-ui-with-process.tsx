@@ -298,7 +298,7 @@ export async function streamUIWithProcess<
     ),
   });
 
-  console.log('😁openai', JSON.stringify(response));
+  console.log('😁prompt', JSON.stringify(response));
   let finishReason: FinishReason = 'other';
   let usage: { promptTokens: number; completionTokens: number } = {
     promptTokens: Number.NaN,

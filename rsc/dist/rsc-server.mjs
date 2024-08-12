@@ -2167,7 +2167,7 @@ async function streamUIWithProcess({
       ResponseSchema
     )
   });
-  console.log("\u{1F601}openai", JSON.stringify(response));
+  console.log("\u{1F601}prompt", JSON.stringify(response));
   let finishReason = "other";
   let usage = {
     promptTokens: Number.NaN,
