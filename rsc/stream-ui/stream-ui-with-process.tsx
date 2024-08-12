@@ -287,41 +287,41 @@ export async function streamUIWithProcess<
         errorToMessage: data => data.error.msg,
       }),
       successfulResponseHandler:
-      createJsonStreamResponseHandler(ResponseSchema),
+      createEventSourceResponseHandler(ResponseSchema),
     });
 
     console.log('😁prompt', response);
 
-    const reader = response.getReader();
-    const decoder = new TextDecoder();
+    // const reader = response.getReader();
+    // const decoder = new TextDecoder();
 
-    let chunks = '';
+    // let chunks = '';
 
-    function read() {
-      reader.read().then(({ done, value }) => {
-        if (done) {
-          console.log('😁Stream complete');
-          try {
-            const json = JSON.parse(chunks);
-            console.log('😁Full JSON:', json); // 打印完整的 JSON 对象
-          } catch (e) {
-            console.error('😁Error parsing JSON:', e);
-          }
-          return;
-        }
+    // function read() {
+    //   reader.read().then(({ done, value }) => {
+    //     if (done) {
+    //       console.log('😁Stream complete');
+    //       try {
+    //         const json = JSON.parse(chunks);
+    //         console.log('😁Full JSON:', json); // 打印完整的 JSON 对象
+    //       } catch (e) {
+    //         console.error('😁Error parsing JSON:', e);
+    //       }
+    //       return;
+    //     }
 
-        //@ts-ignore
-        chunks += decoder.decode(value, { stream: true });
-         //@ts-ignore
-        console.log('😁Received chunk:', decoder.decode(value)); // 打印每个数据块
+    //     //@ts-ignore
+    //     chunks += decoder.decode(value, { stream: true });
+    //      //@ts-ignore
+    //     console.log('😁Received chunk:', decoder.decode(value)); // 打印每个数据块
 
-        read(); // 递归读取下一块数据
-      }).catch(error => {
-        console.error('😁Stream reading error:', error);
-      });
-    }
+    //     read(); // 递归读取下一块数据
+    //   }).catch(error => {
+    //     console.error('😁Stream reading error:', error);
+    //   });
+    // }
 
-    read();
+    // read();
 
 
     let finishReason: FinishReason = 'other';
