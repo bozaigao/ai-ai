@@ -601,8 +601,9 @@ type RenderResult = {
  */
 declare function streamUIWithProcess<TOOLS extends {
     [name: string]: z.ZodTypeAny;
-} = {}>({ processUrl, prompt, messages, maxRetries, abortSignal, headers, initial, text, onFinish, ...settings }: CallSettings & Prompt & {
+} = {}>({ processUrl, body, maxRetries, abortSignal, headers, initial, text, onFinish, ...settings }: CallSettings & {
     processUrl: string;
+    body: z.AnyZodObject;
     text?: RenderText;
     initial?: ReactNode;
     /**

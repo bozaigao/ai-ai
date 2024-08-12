@@ -1,7 +1,6 @@
 import { LanguageModelV1, LanguageModelV1StreamPart } from '@ai-sdk/provider';
 import {
   ParseResult,
-  createEventSourceResponseHandler,
   createEventSourceResponseHandlerForProgress,
   createJsonErrorResponseHandler,
   postJsonToApi,
@@ -103,8 +102,7 @@ export async function streamUIWithProcess<
   TOOLS extends { [name: string]: z.ZodTypeAny } = {},
 >({
   processUrl,
-  prompt,
-  messages,
+  body,
   maxRetries,
   abortSignal,
   headers,
@@ -113,8 +111,9 @@ export async function streamUIWithProcess<
   onFinish,
   ...settings
 }: CallSettings &
-  Prompt & {
+   {
     processUrl: string;
+    body: z.AnyZodObject;
     text?: RenderText;
     initial?: ReactNode;
     /**
@@ -216,24 +215,17 @@ export async function streamUIWithProcess<
     renderFinished.resolve(undefined);
   }
 
-  const question =
-    messages && messages.length > 0
-      ? messages[messages.length - 1].content
-      : 'hello';
   const retry = retryWithExponentialBackoff({ maxRetries });
   const result = await retry(async () => {
     const { value: response } = await postJsonToApi({
       url: processUrl,
-      body: {
-        prompt: question,
-        stream: true,
-      },
+      body: Object.assign(body, { stream: true }),
       failedResponseHandler: createJsonErrorResponseHandler({
         errorSchema: ErrorDataSchema,
         errorToMessage: data => data.error.msg,
       }),
       successfulResponseHandler:
-      createEventSourceResponseHandlerForProgress(ResponseSchema),
+        createEventSourceResponseHandlerForProgress(ResponseSchema),
     });
 
     let finishReason: FinishReason = 'other';

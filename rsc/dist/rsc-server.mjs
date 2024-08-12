@@ -2066,8 +2066,7 @@ var ErrorDataSchema = z.object({
 var defaultTextRenderer2 = ({ content }) => content;
 async function streamUIWithProcess({
   processUrl,
-  prompt,
-  messages,
+  body,
   maxRetries,
   abortSignal,
   headers,
@@ -2122,15 +2121,11 @@ async function streamUIWithProcess({
     }
     renderFinished.resolve(void 0);
   }
-  const question = messages && messages.length > 0 ? messages[messages.length - 1].content : "hello";
   const retry = retryWithExponentialBackoff({ maxRetries });
   const result = await retry(async () => {
     const { value: response } = await postJsonToApi({
       url: processUrl,
-      body: {
-        prompt: question,
-        stream: true
-      },
+      body: Object.assign(body, { stream: true }),
       failedResponseHandler: createJsonErrorResponseHandler({
         errorSchema: ErrorDataSchema,
         errorToMessage: (data) => data.error.msg
