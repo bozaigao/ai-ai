@@ -2187,6 +2187,7 @@ async function streamUIWithProcess({
         const { done, value } = await reader.read();
         if (done)
           break;
+        console.log("\u{1F601}", value.type);
         switch (value.type) {
           case "text-delta": {
             content += value.textDelta;
