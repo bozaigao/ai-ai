@@ -313,7 +313,6 @@ export async function streamUIWithProcess<
           LanguageModelV1StreamPart
         >({
           transform(chunk, controller) {
-            console.log('😁chunk', chunk);
             // handle failed chunk parsing / validation:
             if (!chunk.success) {
               finishReason = 'error';
@@ -322,13 +321,24 @@ export async function streamUIWithProcess<
             }
 
             const value = chunk.value;
-
+            console.log('😁chunk', value);
             // handle error chunks:
             if ('error' in value) {
               finishReason = 'error';
               controller.enqueue({ type: 'error', error: value.error });
               return;
             }
+
+            // const choice = value.choices[0];
+
+            // const delta = choice.delta;
+
+            // if (delta.content != null) {
+            //   controller.enqueue({
+            //     type: 'text-delta',
+            //     textDelta: delta.content,
+            //   });
+            // }
           },
         }),
       ),

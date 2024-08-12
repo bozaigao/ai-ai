@@ -2163,13 +2163,13 @@ async function streamUIWithProcess({
       stream: response.pipeThrough(
         new TransformStream({
           transform(chunk, controller) {
-            console.log("\u{1F601}chunk", chunk);
             if (!chunk.success) {
               finishReason = "error";
               controller.enqueue({ type: "error", error: chunk.error });
               return;
             }
             const value = chunk.value;
+            console.log("\u{1F601}chunk", value);
             if ("error" in value) {
               finishReason = "error";
               controller.enqueue({ type: "error", error: value.error });
