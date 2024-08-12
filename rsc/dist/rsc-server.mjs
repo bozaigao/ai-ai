@@ -2046,8 +2046,8 @@ async function streamUI({
 
 // rsc/stream-ui/stream-ui-with-process.tsx
 import {
-  createEventSourceResponseHandler,
   createJsonErrorResponseHandler,
+  createJsonStreamResponseHandler,
   postJsonToApi,
   safeParseJSON as safeParseJSON2
 } from "@ai-sdk/provider-utils";
@@ -2149,7 +2149,7 @@ async function streamUIWithProcess({
         errorSchema: ErrorDataSchema,
         errorToMessage: (data) => data.error.msg
       }),
-      successfulResponseHandler: createEventSourceResponseHandler(ResponseSchema)
+      successfulResponseHandler: createJsonStreamResponseHandler(ResponseSchema)
     });
     console.log("\u{1F601}prompt", response);
     let finishReason = "other";

@@ -8,6 +8,7 @@ import {
   createEventSourceResponseHandler,
   createJsonErrorResponseHandler,
   createJsonResponseHandler,
+  createJsonStreamResponseHandler,
   generateId,
   isParsableJson,
   postJsonToApi,
@@ -286,7 +287,7 @@ export async function streamUIWithProcess<
         errorToMessage: data => data.error.msg,
       }),
       successfulResponseHandler:
-        createEventSourceResponseHandler(ResponseSchema),
+      createJsonStreamResponseHandler(ResponseSchema),
     });
 
     console.log('😁prompt', response);
