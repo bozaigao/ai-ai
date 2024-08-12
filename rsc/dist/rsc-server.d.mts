@@ -488,7 +488,7 @@ type CoreToolChoice<TOOLS extends Record<string, unknown>> = 'auto' | 'none' | '
 
 type Streamable$1 = ReactNode | Promise<ReactNode>;
 type Renderer$1<T extends Array<any>> = (...args: T) => Streamable$1 | Generator<Streamable$1, Streamable$1, void> | AsyncGenerator<Streamable$1, Streamable$1, void>;
-type RenderTool$1<PARAMETERS extends z.ZodTypeAny = any> = {
+type RenderTool<PARAMETERS extends z.ZodTypeAny = any> = {
     description?: string;
     parameters: PARAMETERS;
     generate?: Renderer$1<[
@@ -533,7 +533,7 @@ declare function streamUI<TOOLS extends {
      * The tools that the model can call. The model needs to support calling tools.
      */
     tools?: {
-        [name in keyof TOOLS]: RenderTool$1<TOOLS[name]>;
+        [name in keyof TOOLS]: RenderTool<TOOLS[name]>;
     };
     /**
      * The tool choice strategy. Default: 'auto'.
@@ -576,17 +576,6 @@ declare function streamUI<TOOLS extends {
 type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other' | 'unknown';
 type Streamable = ReactNode | Promise<ReactNode>;
 type Renderer<T extends Array<any>> = (...args: T) => Streamable | Generator<Streamable, Streamable, void> | AsyncGenerator<Streamable, Streamable, void>;
-type RenderTool<PARAMETERS extends z.ZodTypeAny = any> = {
-    description?: string;
-    parameters: PARAMETERS;
-    generate?: Renderer<[
-        z.infer<PARAMETERS>,
-        {
-            toolName: string;
-            toolCallId: string;
-        }
-    ]>;
-};
 type RenderText = Renderer<[
     {
         /**
@@ -612,17 +601,8 @@ type RenderResult = {
  */
 declare function streamUIWithProcess<TOOLS extends {
     [name: string]: z.ZodTypeAny;
-} = {}>({ tools, toolChoice, prompt, messages, maxRetries, abortSignal, headers, initial, text, onFinish, ...settings }: CallSettings & Prompt & {
-    /**
-     * The tools that the model can call. The model needs to support calling tools.
-     */
-    tools?: {
-        [name in keyof TOOLS]: RenderTool<TOOLS[name]>;
-    };
-    /**
-     * The tool choice strategy. Default: 'auto'.
-     */
-    toolChoice?: CoreToolChoice<TOOLS>;
+} = {}>({ processUrl, prompt, messages, maxRetries, abortSignal, headers, initial, text, onFinish, ...settings }: CallSettings & Prompt & {
+    processUrl: string;
     text?: RenderText;
     initial?: ReactNode;
     /**

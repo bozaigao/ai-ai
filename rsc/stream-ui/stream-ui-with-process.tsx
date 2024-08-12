@@ -1,34 +1,19 @@
-import {
-  InvalidResponseDataError,
-  LanguageModelV1,
-  LanguageModelV1StreamPart,
-} from '@ai-sdk/provider';
+import { LanguageModelV1, LanguageModelV1StreamPart } from '@ai-sdk/provider';
 import {
   ParseResult,
   createEventSourceResponseHandler,
   createJsonErrorResponseHandler,
-  createJsonResponseHandler,
-  createJsonStreamResponseHandler,
-  generateId,
-  isParsableJson,
   postJsonToApi,
-  safeParseJSON,
 } from '@ai-sdk/provider-utils';
 import { ReactNode } from 'react';
 import { z } from 'zod';
 import { CallSettings } from '../../core/prompt/call-settings';
-import { convertToLanguageModelPrompt } from '../../core/prompt/convert-to-language-model-prompt';
-import { getValidatedPrompt } from '../../core/prompt/get-validated-prompt';
-import { prepareCallSettings } from '../../core/prompt/prepare-call-settings';
-import { prepareToolsAndToolChoice } from '../../core/prompt/prepare-tools-and-tool-choice';
 import { Prompt } from '../../core/prompt/prompt';
-import { CallWarning, CoreToolChoice } from '../../core/types';
+import { CallWarning } from '../../core/types';
 import {
   CompletionTokenUsage,
   calculateCompletionTokenUsage,
 } from '../../core/types/token-usage';
-import { InvalidToolArgumentsError } from '../../errors/invalid-tool-arguments-error';
-import { NoSuchToolError } from '../../errors/no-such-tool-error';
 import { createResolvablePromise } from '../../util/create-resolvable-promise';
 import { isAsyncGenerator } from '../../util/is-async-generator';
 import { isGenerator } from '../../util/is-generator';
@@ -45,16 +30,14 @@ type FinishReason =
   | 'unknown';
 
 const ResponseSchema = z.object({
-  success: z.boolean(),
-  code: z.number(),
-  msg: z.string(),
-  data: z.array(z.any().nullable()),
+  statusCode: z.number(),
+  body: z.string(),
 });
 
 export const ErrorDataSchema = z.object({
   error: z.object({
     success: z.boolean(),
-    code: z.number(),
+    statusCode: z.number(),
     msg: z.string(),
     data: z.any().nullable(),
   }),
@@ -136,8 +119,7 @@ const defaultTextRenderer: RenderText = ({ content }: { content: string }) =>
 export async function streamUIWithProcess<
   TOOLS extends { [name: string]: z.ZodTypeAny } = {},
 >({
-  tools,
-  toolChoice,
+  processUrl,
   prompt,
   messages,
   maxRetries,
@@ -149,18 +131,7 @@ export async function streamUIWithProcess<
   ...settings
 }: CallSettings &
   Prompt & {
-    /**
-     * The tools that the model can call. The model needs to support calling tools.
-     */
-    tools?: {
-      [name in keyof TOOLS]: RenderTool<TOOLS[name]>;
-    };
-
-    /**
-     * The tool choice strategy. Default: 'auto'.
-     */
-    toolChoice?: CoreToolChoice<TOOLS>;
-
+    processUrl: string;
     text?: RenderText;
     initial?: ReactNode;
     /**
@@ -203,16 +174,6 @@ export async function streamUIWithProcess<
     throw new Error(
       '`provider` is no longer needed in `streamUI`. Use `model` instead.',
     );
-  }
-  if (tools) {
-    for (const [name, tool] of Object.entries(tools)) {
-      if ('render' in tool) {
-        throw new Error(
-          'Tool definition in `streamUI` should not have `render` property. Use `generate` instead. Found in tool: ' +
-            name,
-        );
-      }
-    }
   }
 
   const ui = createStreamableUI(initial);
@@ -272,57 +233,25 @@ export async function streamUIWithProcess<
     renderFinished.resolve(undefined);
   }
 
+  const question =
+    messages && messages.length > 0
+      ? messages[messages.length - 1].content
+      : 'hello';
   const retry = retryWithExponentialBackoff({ maxRetries });
   const result = await retry(async () => {
     const { value: response } = await postJsonToApi({
-      url: 'https://0yjhl0kfcd.execute-api.us-east-1.amazonaws.com/spangle/prompt',
+      url: processUrl,
       body: {
-        idType: 'product',
-        idValue: ['191877631128'],
+        prompt: question,
         stream: true,
-        stream_options: { include_usage: true },
       },
       failedResponseHandler: createJsonErrorResponseHandler({
         errorSchema: ErrorDataSchema,
         errorToMessage: data => data.error.msg,
       }),
       successfulResponseHandler:
-      createEventSourceResponseHandler(ResponseSchema),
+        createEventSourceResponseHandler(ResponseSchema),
     });
-
-    console.log('😁prompt', response);
-
-    // const reader = response.getReader();
-    // const decoder = new TextDecoder();
-
-    // let chunks = '';
-
-    // function read() {
-    //   reader.read().then(({ done, value }) => {
-    //     if (done) {
-    //       console.log('😁Stream complete');
-    //       try {
-    //         const json = JSON.parse(chunks);
-    //         console.log('😁Full JSON:', json); // 打印完整的 JSON 对象
-    //       } catch (e) {
-    //         console.error('😁Error parsing JSON:', e);
-    //       }
-    //       return;
-    //     }
-
-    //     //@ts-ignore
-    //     chunks += decoder.decode(value, { stream: true });
-    //      //@ts-ignore
-    //     console.log('😁Received chunk:', decoder.decode(value)); // 打印每个数据块
-
-    //     read(); // 递归读取下一块数据
-    //   }).catch(error => {
-    //     console.error('😁Stream reading error:', error);
-    //   });
-    // }
-
-    // read();
-
 
     let finishReason: FinishReason = 'other';
     let usage: { promptTokens: number; completionTokens: number } = {
@@ -346,33 +275,18 @@ export async function streamUIWithProcess<
           ParseResult<z.infer<typeof ResponseSchema>>,
           LanguageModelV1StreamPart
         >({
-          transform(chunk, controller) {
+          transform(chunk: any, controller) {
+            const res = JSON.parse(chunk);
             // handle failed chunk parsing / validation:
-            if (!chunk.success) {
+            if (res.statusCode !== 200) {
               finishReason = 'error';
-              controller.enqueue({ type: 'error', error: chunk.error });
+              controller.enqueue({ type: 'error', error: chunk.msg });
               return;
             }
-
-            const value = chunk.value;
-            console.log('😁chunk', value);
-            // handle error chunks:
-            if ('error' in value) {
-              finishReason = 'error';
-              controller.enqueue({ type: 'error', error: value.error });
-              return;
-            }
-
-            // const choice = value.choices[0];
-
-            // const delta = choice.delta;
-
-            // if (delta.content != null) {
-            //   controller.enqueue({
-            //     type: 'text-delta',
-            //     textDelta: delta.content,
-            //   });
-            // }
+            controller.enqueue({
+              type: 'text-delta',
+              textDelta: JSON.stringify(res.body.replace(/\n/g, '')),
+            });
           },
         }),
       ),
@@ -394,7 +308,6 @@ export async function streamUIWithProcess<
       const reader = forkedStream.getReader();
       while (true) {
         const { done, value } = await reader.read();
-        console.log('😁', done, value, value?.type);
         if (done) break;
         switch (value.type) {
           case 'text-delta': {
@@ -404,56 +317,6 @@ export async function streamUIWithProcess<
               args: [{ content, done: false, delta: value.textDelta }],
               streamableUI: ui,
             });
-            break;
-          }
-
-          case 'tool-call-delta': {
-            hasToolCall = true;
-            break;
-          }
-
-          case 'tool-call': {
-            const toolName = value.toolName as keyof TOOLS & string;
-
-            if (!tools) {
-              throw new NoSuchToolError({ toolName });
-            }
-
-            const tool = tools[toolName];
-            if (!tool) {
-              throw new NoSuchToolError({
-                toolName,
-                availableTools: Object.keys(tools),
-              });
-            }
-
-            hasToolCall = true;
-            const parseResult = safeParseJSON({
-              text: value.args,
-              schema: tool.parameters,
-            });
-
-            if (parseResult.success === false) {
-              throw new InvalidToolArgumentsError({
-                toolName,
-                toolArgs: value.args,
-                cause: parseResult.error,
-              });
-            }
-
-            render({
-              renderer: tool.generate,
-              args: [
-                parseResult.value,
-                {
-                  toolName,
-                  toolCallId: value.toolCallId,
-                },
-              ],
-              streamableUI: ui,
-              isLastCall: true,
-            });
-
             break;
           }
 

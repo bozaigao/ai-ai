@@ -2048,28 +2048,24 @@ async function streamUI({
 import {
   createEventSourceResponseHandler,
   createJsonErrorResponseHandler,
-  postJsonToApi,
-  safeParseJSON as safeParseJSON2
+  postJsonToApi
 } from "@ai-sdk/provider-utils";
 import { z } from "zod";
 var ResponseSchema = z.object({
-  success: z.boolean(),
-  code: z.number(),
-  msg: z.string(),
-  data: z.array(z.any().nullable())
+  statusCode: z.number(),
+  body: z.string()
 });
 var ErrorDataSchema = z.object({
   error: z.object({
     success: z.boolean(),
-    code: z.number(),
+    statusCode: z.number(),
     msg: z.string(),
     data: z.any().nullable()
   })
 });
 var defaultTextRenderer2 = ({ content }) => content;
 async function streamUIWithProcess({
-  tools,
-  toolChoice,
+  processUrl,
   prompt,
   messages,
   maxRetries,
@@ -2089,15 +2085,6 @@ async function streamUIWithProcess({
     throw new Error(
       "`provider` is no longer needed in `streamUI`. Use `model` instead."
     );
-  }
-  if (tools) {
-    for (const [name8, tool] of Object.entries(tools)) {
-      if ("render" in tool) {
-        throw new Error(
-          "Tool definition in `streamUI` should not have `render` property. Use `generate` instead. Found in tool: " + name8
-        );
-      }
-    }
   }
   const ui = createStreamableUI(initial);
   const textRender = text || defaultTextRenderer2;
@@ -2135,15 +2122,14 @@ async function streamUIWithProcess({
     }
     renderFinished.resolve(void 0);
   }
+  const question = messages && messages.length > 0 ? messages[messages.length - 1].content : "hello";
   const retry = retryWithExponentialBackoff({ maxRetries });
   const result = await retry(async () => {
     const { value: response } = await postJsonToApi({
-      url: "https://0yjhl0kfcd.execute-api.us-east-1.amazonaws.com/spangle/prompt",
+      url: processUrl,
       body: {
-        idType: "product",
-        idValue: ["191877631128"],
-        stream: true,
-        stream_options: { include_usage: true }
+        prompt: question,
+        stream: true
       },
       failedResponseHandler: createJsonErrorResponseHandler({
         errorSchema: ErrorDataSchema,
@@ -2151,7 +2137,6 @@ async function streamUIWithProcess({
       }),
       successfulResponseHandler: createEventSourceResponseHandler(ResponseSchema)
     });
-    console.log("\u{1F601}prompt", response);
     let finishReason = "other";
     let usage = {
       promptTokens: Number.NaN,
@@ -2163,18 +2148,16 @@ async function streamUIWithProcess({
       stream: response.pipeThrough(
         new TransformStream({
           transform(chunk, controller) {
-            if (!chunk.success) {
+            const res = JSON.parse(chunk);
+            if (res.statusCode !== 200) {
               finishReason = "error";
-              controller.enqueue({ type: "error", error: chunk.error });
+              controller.enqueue({ type: "error", error: chunk.msg });
               return;
             }
-            const value = chunk.value;
-            console.log("\u{1F601}chunk", value);
-            if ("error" in value) {
-              finishReason = "error";
-              controller.enqueue({ type: "error", error: value.error });
-              return;
-            }
+            controller.enqueue({
+              type: "text-delta",
+              textDelta: JSON.stringify(res.body.replace(/\n/g, ""))
+            });
           }
         })
       ),
@@ -2192,7 +2175,6 @@ async function streamUIWithProcess({
       const reader = forkedStream.getReader();
       while (true) {
         const { done, value } = await reader.read();
-        console.log("\u{1F601}", done, value, value == null ? void 0 : value.type);
         if (done)
           break;
         switch (value.type) {
@@ -2202,48 +2184,6 @@ async function streamUIWithProcess({
               renderer: textRender,
               args: [{ content, done: false, delta: value.textDelta }],
               streamableUI: ui
-            });
-            break;
-          }
-          case "tool-call-delta": {
-            hasToolCall = true;
-            break;
-          }
-          case "tool-call": {
-            const toolName = value.toolName;
-            if (!tools) {
-              throw new NoSuchToolError({ toolName });
-            }
-            const tool = tools[toolName];
-            if (!tool) {
-              throw new NoSuchToolError({
-                toolName,
-                availableTools: Object.keys(tools)
-              });
-            }
-            hasToolCall = true;
-            const parseResult = safeParseJSON2({
-              text: value.args,
-              schema: tool.parameters
-            });
-            if (parseResult.success === false) {
-              throw new InvalidToolArgumentsError({
-                toolName,
-                toolArgs: value.args,
-                cause: parseResult.error
-              });
-            }
-            render2({
-              renderer: tool.generate,
-              args: [
-                parseResult.value,
-                {
-                  toolName,
-                  toolCallId: value.toolCallId
-                }
-              ],
-              streamableUI: ui,
-              isLastCall: true
             });
             break;
           }
