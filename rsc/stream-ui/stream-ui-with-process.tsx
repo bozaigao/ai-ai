@@ -37,52 +37,9 @@ type FinishReason =
   | 'other'
   | 'unknown';
 
-const openAIChatResponseSchema = z.object({
-  choices: z.array(
-    z.object({
-      message: z.object({
-        role: z.literal('assistant').nullish(),
-        content: z.string().nullish(),
-        function_call: z
-          .object({
-            arguments: z.string(),
-            name: z.string(),
-          })
-          .nullish(),
-        tool_calls: z
-          .array(
-            z.object({
-              id: z.string().nullish(),
-              type: z.literal('function'),
-              function: z.object({
-                name: z.string(),
-                arguments: z.string(),
-              }),
-            }),
-          )
-          .nullish(),
-      }),
-      index: z.number(),
-      logprobs: z
-        .object({
-          content: z
-            .array(
-              z.object({
-                token: z.string(),
-                logprob: z.number(),
-                top_logprobs: z.array(
-                  z.object({
-                    token: z.string(),
-                    logprob: z.number(),
-                  }),
-                ),
-              }),
-            )
-            .nullable(),
-        })
-        .nullish(),
-      finish_reason: z.string().nullish(),
-    }),
+const ResponseSchema = z.object({
+  data: z.array(
+    z.any().nullable(),
   ),
   usage: z.object({
     prompt_tokens: z.number(),
@@ -90,12 +47,12 @@ const openAIChatResponseSchema = z.object({
   }),
 });
 
-export const openAIErrorDataSchema = z.object({
+export const ErrorDataSchema = z.object({
   error: z.object({
-    message: z.string(),
-    type: z.string(),
-    param: z.any().nullable(),
-    code: z.string().nullable(),
+    success: z.boolean(),
+    code: z.string(),
+    msg: z.string(),
+    data: z.any().nullable(),
   }),
 });
 
@@ -333,11 +290,11 @@ export async function streamUIWithProcess<
     url: 'https://0yjhl0kfcd.execute-api.us-east-1.amazonaws.com/spangle/prompt',
     body: { idType: 'product', idValue: ['191877631128'] },
     failedResponseHandler: createJsonErrorResponseHandler({
-      errorSchema: openAIErrorDataSchema,
-      errorToMessage: data => data.error.message,
+      errorSchema: ErrorDataSchema,
+      errorToMessage: data => data.error.msg,
     }),
     successfulResponseHandler: createJsonResponseHandler(
-      openAIChatResponseSchema,
+      ResponseSchema,
     ),
   });
 
