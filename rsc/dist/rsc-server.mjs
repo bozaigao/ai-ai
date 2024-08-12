@@ -2044,12 +2044,9 @@ async function streamUI({
 }
 
 // rsc/stream-ui/stream-ui-with-process.tsx
-import { InvalidResponseDataError } from "@ai-sdk/provider";
 import {
   createEventSourceResponseHandler,
   createJsonErrorResponseHandler,
-  generateId,
-  isParsableJson,
   postJsonToApi,
   safeParseJSON as safeParseJSON2
 } from "@ai-sdk/provider-utils";
@@ -2068,21 +2065,6 @@ var ErrorDataSchema = z.object({
     data: z.any().nullable()
   })
 });
-function mapOpenAIFinishReason(finishReason) {
-  switch (finishReason) {
-    case "stop":
-      return "stop";
-    case "length":
-      return "length";
-    case "content_filter":
-      return "content-filter";
-    case "function_call":
-    case "tool_calls":
-      return "tool-calls";
-    default:
-      return "unknown";
-  }
-}
 var defaultTextRenderer2 = ({ content }) => content;
 async function streamUIWithProcess({
   tools,
@@ -2178,7 +2160,6 @@ async function streamUIWithProcess({
   const result = {
     stream: response.pipeThrough(new TransformStream({
       transform(chunk, controller) {
-        var _a8, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
         if (!chunk.success) {
           finishReason = "error";
           controller.enqueue({ type: "error", error: chunk.error });
@@ -2189,105 +2170,6 @@ async function streamUIWithProcess({
           finishReason = "error";
           controller.enqueue({ type: "error", error: value.error });
           return;
-        }
-        if (value.usage != null) {
-          usage = {
-            promptTokens: value.usage.prompt_tokens,
-            completionTokens: value.usage.completion_tokens
-          };
-        }
-        const choice = value.choices[0];
-        if ((choice == null ? void 0 : choice.finish_reason) != null) {
-          finishReason = mapOpenAIFinishReason(choice.finish_reason);
-        }
-        if ((choice == null ? void 0 : choice.delta) == null) {
-          return;
-        }
-        const delta = choice.delta;
-        if (delta.content != null) {
-          controller.enqueue({
-            type: "text-delta",
-            textDelta: delta.content
-          });
-        }
-        const mappedToolCalls = useLegacyFunctionCalling && delta.function_call != null ? [
-          {
-            type: "function",
-            id: generateId(),
-            function: delta.function_call,
-            index: 0
-          }
-        ] : delta.tool_calls;
-        if (mappedToolCalls != null) {
-          for (const toolCallDelta of mappedToolCalls) {
-            const index = toolCallDelta.index;
-            if (toolCalls[index] == null) {
-              if (toolCallDelta.type !== "function") {
-                throw new InvalidResponseDataError({
-                  data: toolCallDelta,
-                  message: `Expected 'function' type.`
-                });
-              }
-              if (toolCallDelta.id == null) {
-                throw new InvalidResponseDataError({
-                  data: toolCallDelta,
-                  message: `Expected 'id' to be a string.`
-                });
-              }
-              if (((_a8 = toolCallDelta.function) == null ? void 0 : _a8.name) == null) {
-                throw new InvalidResponseDataError({
-                  data: toolCallDelta,
-                  message: `Expected 'function.name' to be a string.`
-                });
-              }
-              toolCalls[index] = {
-                id: toolCallDelta.id,
-                type: "function",
-                function: {
-                  name: toolCallDelta.function.name,
-                  arguments: (_b = toolCallDelta.function.arguments) != null ? _b : ""
-                }
-              };
-              const toolCall2 = toolCalls[index];
-              if (((_c = toolCall2.function) == null ? void 0 : _c.name) != null && ((_d = toolCall2.function) == null ? void 0 : _d.arguments) != null && isParsableJson(toolCall2.function.arguments)) {
-                controller.enqueue({
-                  type: "tool-call-delta",
-                  toolCallType: "function",
-                  toolCallId: toolCall2.id,
-                  toolName: toolCall2.function.name,
-                  argsTextDelta: toolCall2.function.arguments
-                });
-                controller.enqueue({
-                  type: "tool-call",
-                  toolCallType: "function",
-                  toolCallId: (_e = toolCall2.id) != null ? _e : generateId(),
-                  toolName: toolCall2.function.name,
-                  args: toolCall2.function.arguments
-                });
-              }
-              continue;
-            }
-            const toolCall = toolCalls[index];
-            if (((_f = toolCallDelta.function) == null ? void 0 : _f.arguments) != null) {
-              toolCall.function.arguments += (_h = (_g = toolCallDelta.function) == null ? void 0 : _g.arguments) != null ? _h : "";
-            }
-            controller.enqueue({
-              type: "tool-call-delta",
-              toolCallType: "function",
-              toolCallId: toolCall.id,
-              toolName: toolCall.function.name,
-              argsTextDelta: (_i = toolCallDelta.function.arguments) != null ? _i : ""
-            });
-            if (((_j = toolCall.function) == null ? void 0 : _j.name) != null && ((_k = toolCall.function) == null ? void 0 : _k.arguments) != null && isParsableJson(toolCall.function.arguments)) {
-              controller.enqueue({
-                type: "tool-call",
-                toolCallType: "function",
-                toolCallId: (_l = toolCall.id) != null ? _l : generateId(),
-                toolName: toolCall.function.name,
-                args: toolCall.function.arguments
-              });
-            }
-          }
         }
       }
     })),
