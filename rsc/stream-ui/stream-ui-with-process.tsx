@@ -1,5 +1,12 @@
-import { LanguageModelV1 } from '@ai-sdk/provider';
-import { safeParseJSON } from '@ai-sdk/provider-utils';
+import { InvalidResponseDataError, LanguageModelV1 } from '@ai-sdk/provider';
+import {
+  createJsonErrorResponseHandler,
+  createJsonResponseHandler,
+  generateId,
+  isParsableJson,
+  postJsonToApi,
+  safeParseJSON,
+} from '@ai-sdk/provider-utils';
 import { ReactNode } from 'react';
 import { z } from 'zod';
 import { CallSettings } from '../../core/prompt/call-settings';
@@ -8,7 +15,7 @@ import { getValidatedPrompt } from '../../core/prompt/get-validated-prompt';
 import { prepareCallSettings } from '../../core/prompt/prepare-call-settings';
 import { prepareToolsAndToolChoice } from '../../core/prompt/prepare-tools-and-tool-choice';
 import { Prompt } from '../../core/prompt/prompt';
-import { CallWarning, CoreToolChoice, FinishReason } from '../../core/types';
+import { CallWarning, CoreToolChoice } from '../../core/types';
 import {
   CompletionTokenUsage,
   calculateCompletionTokenUsage,
@@ -20,6 +27,95 @@ import { isAsyncGenerator } from '../../util/is-async-generator';
 import { isGenerator } from '../../util/is-generator';
 import { retryWithExponentialBackoff } from '../../util/retry-with-exponential-backoff';
 import { createStreamableUI } from '../streamable';
+
+type FinishReason =
+  | 'stop'
+  | 'length'
+  | 'content-filter'
+  | 'tool-calls'
+  | 'error'
+  | 'other'
+  | 'unknown';
+
+const openAIChatResponseSchema = z.object({
+  choices: z.array(
+    z.object({
+      message: z.object({
+        role: z.literal('assistant').nullish(),
+        content: z.string().nullish(),
+        function_call: z
+          .object({
+            arguments: z.string(),
+            name: z.string(),
+          })
+          .nullish(),
+        tool_calls: z
+          .array(
+            z.object({
+              id: z.string().nullish(),
+              type: z.literal('function'),
+              function: z.object({
+                name: z.string(),
+                arguments: z.string(),
+              }),
+            }),
+          )
+          .nullish(),
+      }),
+      index: z.number(),
+      logprobs: z
+        .object({
+          content: z
+            .array(
+              z.object({
+                token: z.string(),
+                logprob: z.number(),
+                top_logprobs: z.array(
+                  z.object({
+                    token: z.string(),
+                    logprob: z.number(),
+                  }),
+                ),
+              }),
+            )
+            .nullable(),
+        })
+        .nullish(),
+      finish_reason: z.string().nullish(),
+    }),
+  ),
+  usage: z.object({
+    prompt_tokens: z.number(),
+    completion_tokens: z.number(),
+  }),
+});
+
+export const openAIErrorDataSchema = z.object({
+  error: z.object({
+    message: z.string(),
+    type: z.string(),
+    param: z.any().nullable(),
+    code: z.string().nullable(),
+  }),
+});
+
+export function mapOpenAIFinishReason(
+  finishReason: string | null | undefined,
+): FinishReason {
+  switch (finishReason) {
+    case 'stop':
+      return 'stop';
+    case 'length':
+      return 'length';
+    case 'content_filter':
+      return 'content-filter';
+    case 'function_call':
+    case 'tool_calls':
+      return 'tool-calls';
+    default:
+      return 'unknown';
+  }
+}
 
 type Streamable = ReactNode | Promise<ReactNode>;
 
@@ -79,10 +175,8 @@ const defaultTextRenderer: RenderText = ({ content }: { content: string }) =>
 export async function streamUIWithProcess<
   TOOLS extends { [name: string]: z.ZodTypeAny } = {},
 >({
-  model,
   tools,
   toolChoice,
-  system,
   prompt,
   messages,
   maxRetries,
@@ -94,11 +188,6 @@ export async function streamUIWithProcess<
   ...settings
 }: CallSettings &
   Prompt & {
-    /**
-     * The language model to use.
-     */
-    model: LanguageModelV1;
-
     /**
      * The tools that the model can call. The model needs to support calling tools.
      */
@@ -144,12 +233,6 @@ export async function streamUIWithProcess<
       };
     }) => Promise<void> | void;
   }): Promise<RenderResult> {
-  // TODO: Remove these errors after the experimental phase.
-  if (typeof model === 'string') {
-    throw new Error(
-      '`model` cannot be a string in `streamUI`. Use the actual model instance instead.',
-    );
-  }
   if ('functions' in settings) {
     throw new Error(
       '`functions` is not supported in `streamUI`, use `tools` instead.',
@@ -229,7 +312,6 @@ export async function streamUIWithProcess<
   }
 
   const retry = retryWithExponentialBackoff({ maxRetries });
-  const validatedPrompt = getValidatedPrompt({ system, prompt, messages });
   // const result = await retry(async () =>
   //   model.doStream({
   //     mode: {
@@ -247,22 +329,200 @@ export async function streamUIWithProcess<
   //   }),
   // );
 
-  // console.log(
-  //   '😁openai',
-  //   JSON.stringify(
-  //     result,
-  //   ),
-  // );
+  const { value: response } = await postJsonToApi({
+    url: 'https://0yjhl0kfcd.execute-api.us-east-1.amazonaws.com/spangle/prompt',
+    body: { idType: 'product', idValue: ['191877631128'] },
+    failedResponseHandler: createJsonErrorResponseHandler({
+      errorSchema: openAIErrorDataSchema,
+      errorToMessage: data => data.error.message,
+    }),
+    successfulResponseHandler: createJsonResponseHandler(
+      openAIChatResponseSchema,
+    ),
+  });
+
+  console.log('😁openai', JSON.stringify(response));
+  let finishReason: FinishReason = 'other';
+  let usage: { promptTokens: number; completionTokens: number } = {
+    promptTokens: Number.NaN,
+    completionTokens: Number.NaN,
+  };
+  const toolCalls: Array<{
+    id: string;
+    type: 'function';
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }> = [];
+
+  const useLegacyFunctionCalling = true;
 
   const result = {
-    stream: {},
+    //@ts-ignore
+    stream: response.pipeThrough({
+      transform(chunk: any, controller: any) {
+        // handle failed chunk parsing / validation:
+        if (!chunk.success) {
+          finishReason = 'error';
+          controller.enqueue({ type: 'error', error: chunk.error });
+          return;
+        }
+
+        const value = chunk.value;
+
+        // handle error chunks:
+        if ('error' in value) {
+          finishReason = 'error';
+          controller.enqueue({ type: 'error', error: value.error });
+          return;
+        }
+
+        if (value.usage != null) {
+          usage = {
+            promptTokens: value.usage.prompt_tokens,
+            completionTokens: value.usage.completion_tokens,
+          };
+        }
+
+        const choice = value.choices[0];
+
+        if (choice?.finish_reason != null) {
+          finishReason = mapOpenAIFinishReason(choice.finish_reason);
+        }
+
+        if (choice?.delta == null) {
+          return;
+        }
+
+        const delta = choice.delta;
+
+        if (delta.content != null) {
+          controller.enqueue({
+            type: 'text-delta',
+            textDelta: delta.content,
+          });
+        }
+
+        const mappedToolCalls: typeof delta.tool_calls =
+          useLegacyFunctionCalling && delta.function_call != null
+            ? [
+                {
+                  type: 'function',
+                  id: generateId(),
+                  function: delta.function_call,
+                  index: 0,
+                },
+              ]
+            : delta.tool_calls;
+
+        if (mappedToolCalls != null) {
+          for (const toolCallDelta of mappedToolCalls) {
+            const index = toolCallDelta.index;
+
+            // Tool call start. OpenAI returns all information except the arguments in the first chunk.
+            if (toolCalls[index] == null) {
+              if (toolCallDelta.type !== 'function') {
+                throw new InvalidResponseDataError({
+                  data: toolCallDelta,
+                  message: `Expected 'function' type.`,
+                });
+              }
+
+              if (toolCallDelta.id == null) {
+                throw new InvalidResponseDataError({
+                  data: toolCallDelta,
+                  message: `Expected 'id' to be a string.`,
+                });
+              }
+
+              if (toolCallDelta.function?.name == null) {
+                throw new InvalidResponseDataError({
+                  data: toolCallDelta,
+                  message: `Expected 'function.name' to be a string.`,
+                });
+              }
+
+              toolCalls[index] = {
+                id: toolCallDelta.id,
+                type: 'function',
+                function: {
+                  name: toolCallDelta.function.name,
+                  arguments: toolCallDelta.function.arguments ?? '',
+                },
+              };
+
+              const toolCall = toolCalls[index];
+
+              // check if tool call is complete (some providers send the full tool call in one chunk)
+              if (
+                toolCall.function?.name != null &&
+                toolCall.function?.arguments != null &&
+                isParsableJson(toolCall.function.arguments)
+              ) {
+                // send delta
+                controller.enqueue({
+                  type: 'tool-call-delta',
+                  toolCallType: 'function',
+                  toolCallId: toolCall.id,
+                  toolName: toolCall.function.name,
+                  argsTextDelta: toolCall.function.arguments,
+                });
+
+                // send tool call
+                controller.enqueue({
+                  type: 'tool-call',
+                  toolCallType: 'function',
+                  toolCallId: toolCall.id ?? generateId(),
+                  toolName: toolCall.function.name,
+                  args: toolCall.function.arguments,
+                });
+              }
+
+              continue;
+            }
+
+            // existing tool call, merge
+            const toolCall = toolCalls[index];
+
+            if (toolCallDelta.function?.arguments != null) {
+              toolCall.function!.arguments +=
+                toolCallDelta.function?.arguments ?? '';
+            }
+
+            // send delta
+            controller.enqueue({
+              type: 'tool-call-delta',
+              toolCallType: 'function',
+              toolCallId: toolCall.id,
+              toolName: toolCall.function.name,
+              argsTextDelta: toolCallDelta.function.arguments ?? '',
+            });
+
+            // check if tool call is complete
+            if (
+              toolCall.function?.name != null &&
+              toolCall.function?.arguments != null &&
+              isParsableJson(toolCall.function.arguments)
+            ) {
+              controller.enqueue({
+                type: 'tool-call',
+                toolCallType: 'function',
+                toolCallId: toolCall.id ?? generateId(),
+                toolName: toolCall.function.name,
+                args: toolCall.function.arguments,
+              });
+            }
+          }
+        }
+      },
+    }),
     rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
     rawResponse: { headers: {} },
     warnings: [],
   };
 
   // For the stream and consume it asynchronously:
-  //@ts-ignore
   const [stream, forkedStream] = result.stream.tee();
   (async () => {
     try {

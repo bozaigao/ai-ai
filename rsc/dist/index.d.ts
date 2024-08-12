@@ -469,7 +469,7 @@ Can be one of the following:
 - `error`: model stopped because of an error
 - `other`: model stopped for other reasons
 */
-type FinishReason = LanguageModelV1FinishReason;
+type FinishReason$1 = LanguageModelV1FinishReason;
 /**
 Warning from the model provider for this call. The call will proceed, but e.g.
 some settings might not be supported, which can lead to suboptimal results.
@@ -550,7 +550,7 @@ declare function streamUI<TOOLS extends {
         /**
          * The reason why the generation finished.
          */
-        finishReason: FinishReason;
+        finishReason: FinishReason$1;
         /**
          * The token usage of the generated response.
          */
@@ -575,6 +575,7 @@ declare function streamUI<TOOLS extends {
     }) => Promise<void> | void;
 }): Promise<RenderResult$1>;
 
+type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other' | 'unknown';
 type Streamable = ReactNode | Promise<ReactNode>;
 type Renderer<T extends Array<any>> = (...args: T) => Streamable | Generator<Streamable, Streamable, void> | AsyncGenerator<Streamable, Streamable, void>;
 type RenderTool<PARAMETERS extends z.ZodTypeAny = any> = {
@@ -613,11 +614,7 @@ type RenderResult = {
  */
 declare function streamUIWithProcess<TOOLS extends {
     [name: string]: z.ZodTypeAny;
-} = {}>({ model, tools, toolChoice, system, prompt, messages, maxRetries, abortSignal, headers, initial, text, onFinish, ...settings }: CallSettings & Prompt & {
-    /**
-     * The language model to use.
-     */
-    model: LanguageModelV1;
+} = {}>({ tools, toolChoice, prompt, messages, maxRetries, abortSignal, headers, initial, text, onFinish, ...settings }: CallSettings & Prompt & {
     /**
      * The tools that the model can call. The model needs to support calling tools.
      */
