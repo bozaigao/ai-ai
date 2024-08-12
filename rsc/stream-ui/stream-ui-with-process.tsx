@@ -1,5 +1,7 @@
-import { InvalidResponseDataError, LanguageModelV1 } from '@ai-sdk/provider';
+import { InvalidResponseDataError, LanguageModelV1, LanguageModelV1StreamPart } from '@ai-sdk/provider';
 import {
+  ParseResult,
+  createEventSourceResponseHandler,
   createJsonErrorResponseHandler,
   createJsonResponseHandler,
   generateId,
@@ -41,9 +43,7 @@ const ResponseSchema = z.object({
   success: z.boolean(),
   code: z.number(),
   msg: z.string(),
-  data: z.array(
-    z.any().nullable(),
-  ),
+  data: z.array(z.any().nullable()),
 });
 
 export const ErrorDataSchema = z.object({
@@ -287,17 +287,20 @@ export async function streamUIWithProcess<
 
   const { value: response } = await postJsonToApi({
     url: 'https://0yjhl0kfcd.execute-api.us-east-1.amazonaws.com/spangle/prompt',
-    body: { idType: 'product', idValue: ['191877631128'] },
+    body: {
+      idType: 'product',
+      idValue: ['191877631128'],
+      stream: true,
+      stream_options: { include_usage: true },
+    },
     failedResponseHandler: createJsonErrorResponseHandler({
       errorSchema: ErrorDataSchema,
       errorToMessage: data => data.error.msg,
     }),
-    successfulResponseHandler: createJsonResponseHandler(
-      ResponseSchema,
-    ),
+    successfulResponseHandler: createEventSourceResponseHandler(ResponseSchema),
   });
 
-  console.log('😁prompt', JSON.stringify(response));
+  console.log('😁prompt', response);
   let finishReason: FinishReason = 'other';
   let usage: { promptTokens: number; completionTokens: number } = {
     promptTokens: Number.NaN,
@@ -315,8 +318,10 @@ export async function streamUIWithProcess<
   const useLegacyFunctionCalling = true;
 
   const result = {
-    //@ts-ignore
-    stream: response.pipeThrough({
+    stream: response.pipeThrough(new TransformStream<
+      ParseResult<z.infer<typeof ResponseSchema>>,
+      LanguageModelV1StreamPart
+    >({
       transform(chunk: any, controller: any) {
         // handle failed chunk parsing / validation:
         if (!chunk.success) {
@@ -472,7 +477,7 @@ export async function streamUIWithProcess<
           }
         }
       },
-    }),
+    })),
     rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
     rawResponse: { headers: {} },
     warnings: [],

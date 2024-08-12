@@ -2046,8 +2046,8 @@ async function streamUI({
 // rsc/stream-ui/stream-ui-with-process.tsx
 import { InvalidResponseDataError } from "@ai-sdk/provider";
 import {
+  createEventSourceResponseHandler,
   createJsonErrorResponseHandler,
-  createJsonResponseHandler,
   generateId,
   isParsableJson,
   postJsonToApi,
@@ -2058,9 +2058,7 @@ var ResponseSchema = z.object({
   success: z.boolean(),
   code: z.number(),
   msg: z.string(),
-  data: z.array(
-    z.any().nullable()
-  )
+  data: z.array(z.any().nullable())
 });
 var ErrorDataSchema = z.object({
   error: z.object({
@@ -2157,16 +2155,19 @@ async function streamUIWithProcess({
   const retry = retryWithExponentialBackoff({ maxRetries });
   const { value: response } = await postJsonToApi({
     url: "https://0yjhl0kfcd.execute-api.us-east-1.amazonaws.com/spangle/prompt",
-    body: { idType: "product", idValue: ["191877631128"] },
+    body: {
+      idType: "product",
+      idValue: ["191877631128"],
+      stream: true,
+      stream_options: { include_usage: true }
+    },
     failedResponseHandler: createJsonErrorResponseHandler({
       errorSchema: ErrorDataSchema,
       errorToMessage: (data) => data.error.msg
     }),
-    successfulResponseHandler: createJsonResponseHandler(
-      ResponseSchema
-    )
+    successfulResponseHandler: createEventSourceResponseHandler(ResponseSchema)
   });
-  console.log("\u{1F601}prompt", JSON.stringify(response));
+  console.log("\u{1F601}prompt", response);
   let finishReason = "other";
   let usage = {
     promptTokens: Number.NaN,
@@ -2175,8 +2176,7 @@ async function streamUIWithProcess({
   const toolCalls = [];
   const useLegacyFunctionCalling = true;
   const result = {
-    //@ts-ignore
-    stream: response.pipeThrough({
+    stream: response.pipeThrough(new TransformStream({
       transform(chunk, controller) {
         var _a8, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
         if (!chunk.success) {
@@ -2290,7 +2290,7 @@ async function streamUIWithProcess({
           }
         }
       }
-    }),
+    })),
     rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
     rawResponse: { headers: {} },
     warnings: []
