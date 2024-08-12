@@ -232,7 +232,7 @@ export async function streamUIWithProcess<
         errorToMessage: data => data.error.msg,
       }),
       successfulResponseHandler:
-        createEventSourceResponseHandler(ResponseSchema),
+      createEventSourceResponseHandlerForProgress(ResponseSchema),
     });
 
     let finishReason: FinishReason = 'other';
