@@ -113,7 +113,7 @@ export async function streamUIWithProcess<
 }: CallSettings &
    {
     processUrl: string;
-    body: z.AnyZodObject;
+    body: {};
     text?: RenderText;
     initial?: ReactNode;
     /**
