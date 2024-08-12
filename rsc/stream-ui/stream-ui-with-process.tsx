@@ -290,6 +290,37 @@ export async function streamUIWithProcess<
     });
 
     console.log('😁prompt', response);
+
+    const reader = response.getReader();
+    const decoder = new TextDecoder();
+
+    let chunks = '';
+
+    function read() {
+      reader.read().then(({ done, value }) => {
+        if (done) {
+          console.log('😁Stream complete');
+          try {
+            const json = JSON.parse(chunks);
+            console.log('😁Full JSON:', json); // 打印完整的 JSON 对象
+          } catch (e) {
+            console.error('😁Error parsing JSON:', e);
+          }
+          return;
+        }
+
+        chunks += value;
+        console.log('😁Received chunk:',value); // 打印每个数据块
+
+        read(); // 递归读取下一块数据
+      }).catch(error => {
+        console.error('😁Stream reading error:', error);
+      });
+    }
+
+    read();
+
+
     let finishReason: FinishReason = 'other';
     let usage: { promptTokens: number; completionTokens: number } = {
       promptTokens: Number.NaN,
