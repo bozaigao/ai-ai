@@ -2160,15 +2160,15 @@ async function streamUIWithProcess({
         if (done) {
           console.log("\u{1F601}Stream complete");
           try {
-            const json = chunks;
+            const json = JSON.parse(chunks);
             console.log("\u{1F601}Full JSON:", json);
           } catch (e) {
             console.error("\u{1F601}Error parsing JSON:", e);
           }
           return;
         }
-        chunks += value;
-        console.log("\u{1F601}Received chunk:", value);
+        chunks += decoder.decode(value, { stream: true });
+        console.log("\u{1F601}Received chunk:", decoder.decode(value));
         read();
       }).catch((error) => {
         console.error("\u{1F601}Stream reading error:", error);

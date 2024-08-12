@@ -301,7 +301,7 @@ export async function streamUIWithProcess<
         if (done) {
           console.log('😁Stream complete');
           try {
-            const json = chunks;
+            const json = JSON.parse(chunks);
             console.log('😁Full JSON:', json); // 打印完整的 JSON 对象
           } catch (e) {
             console.error('😁Error parsing JSON:', e);
@@ -309,8 +309,10 @@ export async function streamUIWithProcess<
           return;
         }
 
-        chunks += value;
-        console.log('😁Received chunk:',value); // 打印每个数据块
+        //@ts-ignore
+        chunks += decoder.decode(value, { stream: true });
+         //@ts-ignore
+        console.log('😁Received chunk:', decoder.decode(value)); // 打印每个数据块
 
         read(); // 递归读取下一块数据
       }).catch(error => {
