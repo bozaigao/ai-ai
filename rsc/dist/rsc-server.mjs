@@ -2046,7 +2046,7 @@ async function streamUI({
 
 // rsc/stream-ui/stream-ui-with-process.tsx
 import {
-  createEventSourceResponseHandler,
+  createEventSourceResponseHandlerForProgress,
   createJsonErrorResponseHandler,
   postJsonToApi
 } from "@ai-sdk/provider-utils";
@@ -2135,7 +2135,7 @@ async function streamUIWithProcess({
         errorSchema: ErrorDataSchema,
         errorToMessage: (data) => data.error.msg
       }),
-      successfulResponseHandler: createEventSourceResponseHandler(ResponseSchema)
+      successfulResponseHandler: createEventSourceResponseHandlerForProgress(ResponseSchema)
     });
     let finishReason = "other";
     let usage = {

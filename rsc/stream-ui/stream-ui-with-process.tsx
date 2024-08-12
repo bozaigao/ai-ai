@@ -2,6 +2,7 @@ import { LanguageModelV1, LanguageModelV1StreamPart } from '@ai-sdk/provider';
 import {
   ParseResult,
   createEventSourceResponseHandler,
+  createEventSourceResponseHandlerForProgress,
   createJsonErrorResponseHandler,
   postJsonToApi,
 } from '@ai-sdk/provider-utils';
