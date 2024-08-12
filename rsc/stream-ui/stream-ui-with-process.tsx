@@ -230,31 +230,39 @@ export async function streamUIWithProcess<
 
   const retry = retryWithExponentialBackoff({ maxRetries });
   const validatedPrompt = getValidatedPrompt({ system, prompt, messages });
-  const result = await retry(async () =>
-    model.doStream({
-      mode: {
-        type: 'regular',
-        ...prepareToolsAndToolChoice({ tools, toolChoice }),
-      },
-      ...prepareCallSettings(settings),
-      inputFormat: validatedPrompt.type,
-      prompt: await convertToLanguageModelPrompt({
-        prompt: validatedPrompt,
-        modelSupportsImageUrls: model.supportsImageUrls,
-      }),
-      abortSignal,
-      headers,
-    }),
-  );
+  // const result = await retry(async () =>
+  //   model.doStream({
+  //     mode: {
+  //       type: 'regular',
+  //       ...prepareToolsAndToolChoice({ tools, toolChoice }),
+  //     },
+  //     ...prepareCallSettings(settings),
+  //     inputFormat: validatedPrompt.type,
+  //     prompt: await convertToLanguageModelPrompt({
+  //       prompt: validatedPrompt,
+  //       modelSupportsImageUrls: model.supportsImageUrls,
+  //     }),
+  //     abortSignal,
+  //     headers,
+  //   }),
+  // );
 
-  console.log(
-    '😁openai',
-    JSON.stringify(
-      result,
-    ),
-  );
+  // console.log(
+  //   '😁openai',
+  //   JSON.stringify(
+  //     result,
+  //   ),
+  // );
+
+  const result = {
+    stream: {},
+    rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
+    rawResponse: { headers: {} },
+    warnings: [],
+  };
 
   // For the stream and consume it asynchronously:
+  //@ts-ignore
   const [stream, forkedStream] = result.stream.tee();
   (async () => {
     try {

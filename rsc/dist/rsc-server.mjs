@@ -2123,28 +2123,12 @@ async function streamUIWithProcess({
   }
   const retry = retryWithExponentialBackoff({ maxRetries });
   const validatedPrompt = getValidatedPrompt({ system, prompt, messages });
-  const result = await retry(
-    async () => model.doStream({
-      mode: {
-        type: "regular",
-        ...prepareToolsAndToolChoice({ tools, toolChoice })
-      },
-      ...prepareCallSettings(settings),
-      inputFormat: validatedPrompt.type,
-      prompt: await convertToLanguageModelPrompt({
-        prompt: validatedPrompt,
-        modelSupportsImageUrls: model.supportsImageUrls
-      }),
-      abortSignal,
-      headers
-    })
-  );
-  console.log(
-    "\u{1F601}openai",
-    JSON.stringify(
-      result
-    )
-  );
+  const result = {
+    stream: {},
+    rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
+    rawResponse: { headers: {} },
+    warnings: []
+  };
   const [stream, forkedStream] = result.stream.tee();
   (async () => {
     try {
