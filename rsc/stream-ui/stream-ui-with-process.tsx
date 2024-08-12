@@ -301,7 +301,7 @@ export async function streamUIWithProcess<
         if (done) {
           console.log('😁Stream complete');
           try {
-            const json = JSON.parse(chunks);
+            const json = chunks;
             console.log('😁Full JSON:', json); // 打印完整的 JSON 对象
           } catch (e) {
             console.error('😁Error parsing JSON:', e);
