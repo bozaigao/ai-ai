@@ -272,85 +272,73 @@ export async function streamUIWithProcess<
   }
 
   const retry = retryWithExponentialBackoff({ maxRetries });
-  // const result = await retry(async () =>
-  //   model.doStream({
-  //     mode: {
-  //       type: 'regular',
-  //       ...prepareToolsAndToolChoice({ tools, toolChoice }),
-  //     },
-  //     ...prepareCallSettings(settings),
-  //     inputFormat: validatedPrompt.type,
-  //     prompt: await convertToLanguageModelPrompt({
-  //       prompt: validatedPrompt,
-  //       modelSupportsImageUrls: model.supportsImageUrls,
-  //     }),
-  //     abortSignal,
-  //     headers,
-  //   }),
-  // );
-
-  const { value: response } = await postJsonToApi({
-    url: 'https://0yjhl0kfcd.execute-api.us-east-1.amazonaws.com/spangle/prompt',
-    body: {
-      idType: 'product',
-      idValue: ['191877631128'],
-      stream: true,
-      stream_options: { include_usage: true },
-    },
-    failedResponseHandler: createJsonErrorResponseHandler({
-      errorSchema: ErrorDataSchema,
-      errorToMessage: data => data.error.msg,
-    }),
-    successfulResponseHandler: createEventSourceResponseHandler(ResponseSchema),
-  });
-
-  console.log('😁prompt', response);
-  let finishReason: FinishReason = 'other';
-  let usage: { promptTokens: number; completionTokens: number } = {
-    promptTokens: Number.NaN,
-    completionTokens: Number.NaN,
-  };
-  const toolCalls: Array<{
-    id: string;
-    type: 'function';
-    function: {
-      name: string;
-      arguments: string;
-    };
-  }> = [];
-
-  const useLegacyFunctionCalling = true;
-
-  const result = {
-    stream: response.pipeThrough(
-      new TransformStream<
-        ParseResult<z.infer<typeof ResponseSchema>>,
-        LanguageModelV1StreamPart
-      >({
-        transform(chunk, controller) {
-          console.log('😁chunk',chunk);
-          // handle failed chunk parsing / validation:
-          if (!chunk.success) {
-            finishReason = 'error';
-            controller.enqueue({ type: 'error', error: chunk.error });
-            return;
-          }
-
-          const value = chunk.value;
-
-          // handle error chunks:
-          if ('error' in value) {
-            finishReason = 'error';
-            controller.enqueue({ type: 'error', error: value.error });
-            return;
-          }
-        },
+  const result = await retry(async () => {
+    const { value: response } = await postJsonToApi({
+      url: 'https://0yjhl0kfcd.execute-api.us-east-1.amazonaws.com/spangle/prompt',
+      body: {
+        idType: 'product',
+        idValue: ['191877631128'],
+        stream: true,
+        stream_options: { include_usage: true },
+      },
+      failedResponseHandler: createJsonErrorResponseHandler({
+        errorSchema: ErrorDataSchema,
+        errorToMessage: data => data.error.msg,
       }),
-    ),
-    rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
-    rawResponse: { headers: {} },
-    warnings: [],
-  };
+      successfulResponseHandler:
+        createEventSourceResponseHandler(ResponseSchema),
+    });
+
+    console.log('😁prompt', response);
+    let finishReason: FinishReason = 'other';
+    let usage: { promptTokens: number; completionTokens: number } = {
+      promptTokens: Number.NaN,
+      completionTokens: Number.NaN,
+    };
+    const toolCalls: Array<{
+      id: string;
+      type: 'function';
+      function: {
+        name: string;
+        arguments: string;
+      };
+    }> = [];
+
+    const useLegacyFunctionCalling = true;
+
+    const result = {
+      stream: response.pipeThrough(
+        new TransformStream<
+          ParseResult<z.infer<typeof ResponseSchema>>,
+          LanguageModelV1StreamPart
+        >({
+          transform(chunk, controller) {
+            console.log('😁chunk', chunk);
+            // handle failed chunk parsing / validation:
+            if (!chunk.success) {
+              finishReason = 'error';
+              controller.enqueue({ type: 'error', error: chunk.error });
+              return;
+            }
+
+            const value = chunk.value;
+
+            // handle error chunks:
+            if ('error' in value) {
+              finishReason = 'error';
+              controller.enqueue({ type: 'error', error: value.error });
+              return;
+            }
+          },
+        }),
+      ),
+      rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
+      rawResponse: { headers: {} },
+      warnings: [],
+    };
+
+    return result;
+  });
 
   // For the stream and consume it asynchronously:
   const [stream, forkedStream] = result.stream.tee();

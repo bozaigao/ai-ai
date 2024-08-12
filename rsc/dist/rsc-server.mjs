@@ -1955,6 +1955,7 @@ async function streamUI({
       const reader = forkedStream.getReader();
       while (true) {
         const { done, value } = await reader.read();
+        console.log("\u{1F601}", done, value, value == null ? void 0 : value.type);
         if (done)
           break;
         switch (value.type) {
@@ -2135,51 +2136,54 @@ async function streamUIWithProcess({
     renderFinished.resolve(void 0);
   }
   const retry = retryWithExponentialBackoff({ maxRetries });
-  const { value: response } = await postJsonToApi({
-    url: "https://0yjhl0kfcd.execute-api.us-east-1.amazonaws.com/spangle/prompt",
-    body: {
-      idType: "product",
-      idValue: ["191877631128"],
-      stream: true,
-      stream_options: { include_usage: true }
-    },
-    failedResponseHandler: createJsonErrorResponseHandler({
-      errorSchema: ErrorDataSchema,
-      errorToMessage: (data) => data.error.msg
-    }),
-    successfulResponseHandler: createEventSourceResponseHandler(ResponseSchema)
+  const result = await retry(async () => {
+    const { value: response } = await postJsonToApi({
+      url: "https://0yjhl0kfcd.execute-api.us-east-1.amazonaws.com/spangle/prompt",
+      body: {
+        idType: "product",
+        idValue: ["191877631128"],
+        stream: true,
+        stream_options: { include_usage: true }
+      },
+      failedResponseHandler: createJsonErrorResponseHandler({
+        errorSchema: ErrorDataSchema,
+        errorToMessage: (data) => data.error.msg
+      }),
+      successfulResponseHandler: createEventSourceResponseHandler(ResponseSchema)
+    });
+    console.log("\u{1F601}prompt", response);
+    let finishReason = "other";
+    let usage = {
+      promptTokens: Number.NaN,
+      completionTokens: Number.NaN
+    };
+    const toolCalls = [];
+    const useLegacyFunctionCalling = true;
+    const result2 = {
+      stream: response.pipeThrough(
+        new TransformStream({
+          transform(chunk, controller) {
+            console.log("\u{1F601}chunk", chunk);
+            if (!chunk.success) {
+              finishReason = "error";
+              controller.enqueue({ type: "error", error: chunk.error });
+              return;
+            }
+            const value = chunk.value;
+            if ("error" in value) {
+              finishReason = "error";
+              controller.enqueue({ type: "error", error: value.error });
+              return;
+            }
+          }
+        })
+      ),
+      rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
+      rawResponse: { headers: {} },
+      warnings: []
+    };
+    return result2;
   });
-  console.log("\u{1F601}prompt", response);
-  let finishReason = "other";
-  let usage = {
-    promptTokens: Number.NaN,
-    completionTokens: Number.NaN
-  };
-  const toolCalls = [];
-  const useLegacyFunctionCalling = true;
-  const result = {
-    stream: response.pipeThrough(
-      new TransformStream({
-        transform(chunk, controller) {
-          console.log("\u{1F601}chunk", chunk);
-          if (!chunk.success) {
-            finishReason = "error";
-            controller.enqueue({ type: "error", error: chunk.error });
-            return;
-          }
-          const value = chunk.value;
-          if ("error" in value) {
-            finishReason = "error";
-            controller.enqueue({ type: "error", error: value.error });
-            return;
-          }
-        }
-      })
-    ),
-    rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
-    rawResponse: { headers: {} },
-    warnings: []
-  };
   const [stream, forkedStream] = result.stream.tee();
   (async () => {
     try {
