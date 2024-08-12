@@ -2152,29 +2152,6 @@ async function streamUIWithProcess({
       successfulResponseHandler: createEventSourceResponseHandler(ResponseSchema)
     });
     console.log("\u{1F601}prompt", response);
-    const reader = response.getReader();
-    const decoder = new TextDecoder();
-    let chunks = "";
-    function read() {
-      reader.read().then(({ done, value }) => {
-        if (done) {
-          console.log("\u{1F601}Stream complete");
-          try {
-            const json = JSON.parse(chunks);
-            console.log("\u{1F601}Full JSON:", json);
-          } catch (e) {
-            console.error("\u{1F601}Error parsing JSON:", e);
-          }
-          return;
-        }
-        chunks += decoder.decode(value, { stream: true });
-        console.log("\u{1F601}Received chunk:", decoder.decode(value));
-        read();
-      }).catch((error) => {
-        console.error("\u{1F601}Stream reading error:", error);
-      });
-    }
-    read();
     let finishReason = "other";
     let usage = {
       promptTokens: Number.NaN,
