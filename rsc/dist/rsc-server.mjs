@@ -2056,7 +2056,7 @@ import {
 import { z } from "zod";
 var ResponseSchema = z.object({
   success: z.boolean(),
-  code: z.string(),
+  code: z.number(),
   msg: z.string(),
   data: z.array(
     z.any().nullable()
@@ -2065,7 +2065,7 @@ var ResponseSchema = z.object({
 var ErrorDataSchema = z.object({
   error: z.object({
     success: z.boolean(),
-    code: z.string(),
+    code: z.number(),
     msg: z.string(),
     data: z.any().nullable()
   })

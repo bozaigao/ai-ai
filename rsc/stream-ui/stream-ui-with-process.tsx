@@ -39,7 +39,7 @@ type FinishReason =
 
 const ResponseSchema = z.object({
   success: z.boolean(),
-  code: z.string(),
+  code: z.number(),
   msg: z.string(),
   data: z.array(
     z.any().nullable(),
@@ -49,7 +49,7 @@ const ResponseSchema = z.object({
 export const ErrorDataSchema = z.object({
   error: z.object({
     success: z.boolean(),
-    code: z.string(),
+    code: z.number(),
     msg: z.string(),
     data: z.any().nullable(),
   }),
