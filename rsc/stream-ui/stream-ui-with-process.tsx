@@ -328,6 +328,7 @@ export async function streamUIWithProcess<
         LanguageModelV1StreamPart
       >({
         transform(chunk, controller) {
+          console.log('😁chunk',chunk);
           // handle failed chunk parsing / validation:
           if (!chunk.success) {
             finishReason = 'error';
