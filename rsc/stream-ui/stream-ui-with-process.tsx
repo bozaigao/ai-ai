@@ -1,4 +1,8 @@
-import { InvalidResponseDataError, LanguageModelV1, LanguageModelV1StreamPart } from '@ai-sdk/provider';
+import {
+  InvalidResponseDataError,
+  LanguageModelV1,
+  LanguageModelV1StreamPart,
+} from '@ai-sdk/provider';
 import {
   ParseResult,
   createEventSourceResponseHandler,
@@ -318,28 +322,30 @@ export async function streamUIWithProcess<
   const useLegacyFunctionCalling = true;
 
   const result = {
-    stream: response.pipeThrough(new TransformStream<
-      ParseResult<z.infer<typeof ResponseSchema>>,
-      LanguageModelV1StreamPart
-    >({
-      transform(chunk, controller) {
-        // handle failed chunk parsing / validation:
-        if (!chunk.success) {
-          finishReason = 'error';
-          controller.enqueue({ type: 'error', error: chunk.error });
-          return;
-        }
+    stream: response.pipeThrough(
+      new TransformStream<
+        ParseResult<z.infer<typeof ResponseSchema>>,
+        LanguageModelV1StreamPart
+      >({
+        transform(chunk, controller) {
+          // handle failed chunk parsing / validation:
+          if (!chunk.success) {
+            finishReason = 'error';
+            controller.enqueue({ type: 'error', error: chunk.error });
+            return;
+          }
 
-        const value = chunk.value;
+          const value = chunk.value;
 
-        // handle error chunks:
-        if ('error' in value) {
-          finishReason = 'error';
-          controller.enqueue({ type: 'error', error: value.error });
-          return;
-        }
-      },
-    })),
+          // handle error chunks:
+          if ('error' in value) {
+            finishReason = 'error';
+            controller.enqueue({ type: 'error', error: value.error });
+            return;
+          }
+        },
+      }),
+    ),
     rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
     rawResponse: { headers: {} },
     warnings: [],
@@ -355,8 +361,8 @@ export async function streamUIWithProcess<
       const reader = forkedStream.getReader();
       while (true) {
         const { done, value } = await reader.read();
+        console.log('😁', done, value, value?.type);
         if (done) break;
-        console.log('😁',value.type);
         switch (value.type) {
           case 'text-delta': {
             content += value.textDelta;

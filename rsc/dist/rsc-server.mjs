@@ -2158,21 +2158,23 @@ async function streamUIWithProcess({
   const toolCalls = [];
   const useLegacyFunctionCalling = true;
   const result = {
-    stream: response.pipeThrough(new TransformStream({
-      transform(chunk, controller) {
-        if (!chunk.success) {
-          finishReason = "error";
-          controller.enqueue({ type: "error", error: chunk.error });
-          return;
+    stream: response.pipeThrough(
+      new TransformStream({
+        transform(chunk, controller) {
+          if (!chunk.success) {
+            finishReason = "error";
+            controller.enqueue({ type: "error", error: chunk.error });
+            return;
+          }
+          const value = chunk.value;
+          if ("error" in value) {
+            finishReason = "error";
+            controller.enqueue({ type: "error", error: value.error });
+            return;
+          }
         }
-        const value = chunk.value;
-        if ("error" in value) {
-          finishReason = "error";
-          controller.enqueue({ type: "error", error: value.error });
-          return;
-        }
-      }
-    })),
+      })
+    ),
     rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
     rawResponse: { headers: {} },
     warnings: []
@@ -2185,9 +2187,9 @@ async function streamUIWithProcess({
       const reader = forkedStream.getReader();
       while (true) {
         const { done, value } = await reader.read();
+        console.log("\u{1F601}", done, value, value == null ? void 0 : value.type);
         if (done)
           break;
-        console.log("\u{1F601}", value.type);
         switch (value.type) {
           case "text-delta": {
             content += value.textDelta;
