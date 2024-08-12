@@ -78,7 +78,7 @@
   },
   "dependencies": {
     "@ai-sdk/provider": "0.0.17",
-    "@ai-sdk/provider-utils": "1.0.9",
+    "@ai-sdk/provider-utils": "workspace:*",
     "@ai-sdk/react": "0.0.41",
     "@ai-sdk/solid": "0.0.32",
     "@ai-sdk/svelte": "0.0.34",
