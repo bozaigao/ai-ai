@@ -43,24 +43,6 @@ export const ErrorDataSchema = z.object({
   }),
 });
 
-export function mapOpenAIFinishReason(
-  finishReason: string | null | undefined,
-): FinishReason {
-  switch (finishReason) {
-    case 'stop':
-      return 'stop';
-    case 'length':
-      return 'length';
-    case 'content_filter':
-      return 'content-filter';
-    case 'function_call':
-    case 'tool_calls':
-      return 'tool-calls';
-    default:
-      return 'unknown';
-  }
-}
-
 type Streamable = ReactNode | Promise<ReactNode>;
 
 type Renderer<T extends Array<any>> = (
