@@ -2055,13 +2055,12 @@ import {
 } from "@ai-sdk/provider-utils";
 import { z } from "zod";
 var ResponseSchema = z.object({
+  success: z.boolean(),
+  code: z.string(),
+  msg: z.string(),
   data: z.array(
     z.any().nullable()
-  ),
-  usage: z.object({
-    prompt_tokens: z.number(),
-    completion_tokens: z.number()
-  })
+  )
 });
 var ErrorDataSchema = z.object({
   error: z.object({
