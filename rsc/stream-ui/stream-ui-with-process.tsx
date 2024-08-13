@@ -126,6 +126,7 @@ export async function streamUIWithProcess({
     );
   }
   const ui = createStreamableUI(initial);
+
   // The default text renderer just returns the content as string.
   const textRender = text || defaultTextRenderer;
 
@@ -169,6 +170,7 @@ export async function streamUIWithProcess({
       }
     } else {
       const node = await rendererResult;
+
       if (isLastCall) {
         streamableUI.done(node);
       } else {
