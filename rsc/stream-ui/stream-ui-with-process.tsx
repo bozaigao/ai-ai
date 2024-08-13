@@ -8,12 +8,7 @@ import {
 import { ReactNode } from 'react';
 import { z } from 'zod';
 import { CallSettings } from '../../core/prompt/call-settings';
-import { Prompt } from '../../core/prompt/prompt';
 import { CallWarning } from '../../core/types';
-import {
-  CompletionTokenUsage,
-  calculateCompletionTokenUsage,
-} from '../../core/types/token-usage';
 import { createResolvablePromise } from '../../util/create-resolvable-promise';
 import { isAsyncGenerator } from '../../util/is-async-generator';
 import { isGenerator } from '../../util/is-generator';
@@ -24,7 +19,6 @@ type FinishReason =
   | 'stop'
   | 'length'
   | 'content-filter'
-  | 'tool-calls'
   | 'error'
   | 'other'
   | 'unknown';
@@ -51,20 +45,6 @@ type Renderer<T extends Array<any>> = (
   | Streamable
   | Generator<Streamable, Streamable, void>
   | AsyncGenerator<Streamable, Streamable, void>;
-
-type RenderTool<PARAMETERS extends z.ZodTypeAny = any> = {
-  description?: string;
-  parameters: PARAMETERS;
-  generate?: Renderer<
-    [
-      z.infer<PARAMETERS>,
-      {
-        toolName: string;
-        toolCallId: string;
-      },
-    ]
-  >;
-};
 
 type RenderText = Renderer<
   [
@@ -96,11 +76,9 @@ const defaultTextRenderer: RenderText = ({ content }: { content: string }) =>
   content;
 
 /**
- * `streamUI` is a helper function to create a streamable UI from LLMs.
+ * `streamUIWithProcess` is a helper function to create a streamable UI from process.
  */
-export async function streamUIWithProcess<
-  TOOLS extends { [name: string]: z.ZodTypeAny } = {},
->({
+export async function streamUIWithProcess({
   processUrl,
   body,
   maxRetries,
@@ -110,56 +88,44 @@ export async function streamUIWithProcess<
   text,
   onFinish,
   ...settings
-}: CallSettings &
-   {
-    processUrl: string;
-    body: {};
-    text?: RenderText;
-    initial?: ReactNode;
+}: CallSettings & {
+  processUrl: string;
+  body: {};
+  text?: RenderText;
+  initial?: ReactNode;
+  /**
+   * Callback that is called when the LLM response and the final object validation are finished.
+   */
+  onFinish?: (event: {
     /**
-     * Callback that is called when the LLM response and the final object validation are finished.
+     * The reason why the generation finished.
      */
-    onFinish?: (event: {
+    finishReason: FinishReason;
+    /**
+     * The final ui node that was generated.
+     */
+    value: ReactNode;
+    /**
+     * Warnings from the model provider (e.g. unsupported settings)
+     */
+    warnings?: CallWarning[];
+    /**
+     * Optional raw response data.
+     */
+    rawResponse?: {
       /**
-       * The reason why the generation finished.
+       * Response headers.
        */
-      finishReason: FinishReason;
-      /**
-       * The token usage of the generated response.
-       */
-      usage: CompletionTokenUsage;
-      /**
-       * The final ui node that was generated.
-       */
-      value: ReactNode;
-      /**
-       * Warnings from the model provider (e.g. unsupported settings)
-       */
-      warnings?: CallWarning[];
-      /**
-       * Optional raw response data.
-       */
-      rawResponse?: {
-        /**
-         * Response headers.
-         */
-        headers?: Record<string, string>;
-      };
-    }) => Promise<void> | void;
-  }): Promise<RenderResult> {
-  if ('functions' in settings) {
-    throw new Error(
-      '`functions` is not supported in `streamUI`, use `tools` instead.',
-    );
-  }
+      headers?: Record<string, string>;
+    };
+  }) => Promise<void> | void;
+}): Promise<RenderResult> {
   if ('provider' in settings) {
     throw new Error(
       '`provider` is no longer needed in `streamUI`. Use `model` instead.',
     );
   }
-
   const ui = createStreamableUI(initial);
-
   // The default text renderer just returns the content as string.
   const textRender = text || defaultTextRenderer;
 
@@ -203,7 +169,6 @@ export async function streamUIWithProcess<
       }
     } else {
       const node = await rendererResult;
-
       if (isLastCall) {
         streamableUI.done(node);
       } else {
@@ -229,20 +194,6 @@ export async function streamUIWithProcess<
     });
 
     let finishReason: FinishReason = 'other';
-    let usage: { promptTokens: number; completionTokens: number } = {
-      promptTokens: Number.NaN,
-      completionTokens: Number.NaN,
-    };
-    const toolCalls: Array<{
-      id: string;
-      type: 'function';
-      function: {
-        name: string;
-        arguments: string;
-      };
-    }> = [];
-
-    const useLegacyFunctionCalling = true;
 
     const result = {
       stream: response.pipeThrough(
@@ -265,7 +216,7 @@ export async function streamUIWithProcess<
           },
         }),
       ),
-      rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
+      rawCall: { rawPrompt: [], rawSettings: {} },
       rawResponse: { headers: {} },
       warnings: [],
     };
@@ -278,7 +229,6 @@ export async function streamUIWithProcess<
   (async () => {
     try {
       let content = '';
-      let hasToolCall = false;
 
       const reader = forkedStream.getReader();
       while (true) {
@@ -302,7 +252,6 @@ export async function streamUIWithProcess<
           case 'finish': {
             onFinish?.({
               finishReason: value.finishReason,
-              usage: calculateCompletionTokenUsage(value.usage),
               value: ui.value,
               warnings: result.warnings,
               rawResponse: result.rawResponse,
@@ -310,16 +259,6 @@ export async function streamUIWithProcess<
           }
         }
       }
-
-      if (!hasToolCall) {
-        render({
-          renderer: textRender,
-          args: [{ content, done: true }],
-          streamableUI: ui,
-          isLastCall: true,
-        });
-      }
-
       await finished;
     } catch (error) {
       // During the stream rendering, we don't want to throw the error to the

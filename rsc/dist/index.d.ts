@@ -575,7 +575,7 @@ declare function streamUI<TOOLS extends {
     }) => Promise<void> | void;
 }): Promise<RenderResult$1>;
 
-type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other' | 'unknown';
+type FinishReason = 'stop' | 'length' | 'content-filter' | 'error' | 'other' | 'unknown';
 type Streamable = ReactNode | Promise<ReactNode>;
 type Renderer<T extends Array<any>> = (...args: T) => Streamable | Generator<Streamable, Streamable, void> | AsyncGenerator<Streamable, Streamable, void>;
 type RenderText = Renderer<[
@@ -599,11 +599,9 @@ type RenderResult = {
     value: ReactNode;
 } & Awaited<ReturnType<LanguageModelV1['doStream']>>;
 /**
- * `streamUI` is a helper function to create a streamable UI from LLMs.
+ * `streamUIWithProcess` is a helper function to create a streamable UI from process.
  */
-declare function streamUIWithProcess<TOOLS extends {
-    [name: string]: z.ZodTypeAny;
-} = {}>({ processUrl, body, maxRetries, abortSignal, headers, initial, text, onFinish, ...settings }: CallSettings & {
+declare function streamUIWithProcess({ processUrl, body, maxRetries, abortSignal, headers, initial, text, onFinish, ...settings }: CallSettings & {
     processUrl: string;
     body: {};
     text?: RenderText;
@@ -616,10 +614,6 @@ declare function streamUIWithProcess<TOOLS extends {
          * The reason why the generation finished.
          */
         finishReason: FinishReason;
-        /**
-         * The token usage of the generated response.
-         */
-        usage: CompletionTokenUsage;
         /**
          * The final ui node that was generated.
          */

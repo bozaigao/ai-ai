@@ -257,7 +257,6 @@ export async function streamUI<
       const reader = forkedStream.getReader();
       while (true) {
         const { done, value } = await reader.read();
-        console.log('😁', done, value, value?.type);
         if (done) break;
 
         switch (value.type) {

@@ -1955,7 +1955,6 @@ async function streamUI({
       const reader = forkedStream.getReader();
       while (true) {
         const { done, value } = await reader.read();
-        console.log("\u{1F601}", done, value, value == null ? void 0 : value.type);
         if (done)
           break;
         switch (value.type) {
@@ -2075,11 +2074,6 @@ async function streamUIWithProcess({
   onFinish,
   ...settings
 }) {
-  if ("functions" in settings) {
-    throw new Error(
-      "`functions` is not supported in `streamUI`, use `tools` instead."
-    );
-  }
   if ("provider" in settings) {
     throw new Error(
       "`provider` is no longer needed in `streamUI`. Use `model` instead."
@@ -2133,12 +2127,6 @@ async function streamUIWithProcess({
       successfulResponseHandler: createEventSourceResponseHandlerForProgress(ResponseSchema)
     });
     let finishReason = "other";
-    let usage = {
-      promptTokens: Number.NaN,
-      completionTokens: Number.NaN
-    };
-    const toolCalls = [];
-    const useLegacyFunctionCalling = true;
     const result2 = {
       stream: response.pipeThrough(
         new TransformStream({
@@ -2156,7 +2144,7 @@ async function streamUIWithProcess({
           }
         })
       ),
-      rawCall: { rawPrompt: [], rawSettings: { tools: [] } },
+      rawCall: { rawPrompt: [], rawSettings: {} },
       rawResponse: { headers: {} },
       warnings: []
     };
@@ -2166,7 +2154,6 @@ async function streamUIWithProcess({
   (async () => {
     try {
       let content = "";
-      let hasToolCall = false;
       const reader = forkedStream.getReader();
       while (true) {
         const { done, value } = await reader.read();
@@ -2188,21 +2175,12 @@ async function streamUIWithProcess({
           case "finish": {
             onFinish == null ? void 0 : onFinish({
               finishReason: value.finishReason,
-              usage: calculateCompletionTokenUsage(value.usage),
               value: ui.value,
               warnings: result.warnings,
               rawResponse: result.rawResponse
             });
           }
         }
-      }
-      if (!hasToolCall) {
-        render2({
-          renderer: textRender,
-          args: [{ content, done: true }],
-          streamableUI: ui,
-          isLastCall: true
-        });
       }
       await finished;
     } catch (error) {
