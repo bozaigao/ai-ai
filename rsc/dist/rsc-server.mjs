@@ -2055,12 +2055,8 @@ var ResponseSchema = z.object({
   body: z.string()
 });
 var ErrorDataSchema = z.object({
-  error: z.object({
-    success: z.boolean(),
-    statusCode: z.number(),
-    msg: z.string(),
-    data: z.any().nullable()
-  })
+  statusCode: z.number(),
+  errorMessage: z.string()
 });
 var defaultTextRenderer2 = ({ content }) => content;
 async function streamUIWithProcess({
@@ -2122,7 +2118,7 @@ async function streamUIWithProcess({
       body: Object.assign(body, { stream: true }),
       failedResponseHandler: createJsonErrorResponseHandler({
         errorSchema: ErrorDataSchema,
-        errorToMessage: (data) => data.error.msg
+        errorToMessage: (data) => data.errorMessage
       }),
       successfulResponseHandler: createEventSourceResponseHandlerForProgress(ResponseSchema)
     });

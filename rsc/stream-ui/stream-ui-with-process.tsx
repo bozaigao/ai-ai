@@ -29,12 +29,8 @@ const ResponseSchema = z.object({
 });
 
 export const ErrorDataSchema = z.object({
-  error: z.object({
-    success: z.boolean(),
-    statusCode: z.number(),
-    msg: z.string(),
-    data: z.any().nullable(),
-  }),
+  statusCode: z.number(),
+  errorMessage: z.string(),
 });
 
 type Streamable = ReactNode | Promise<ReactNode>;
@@ -189,7 +185,7 @@ export async function streamUIWithProcess({
       body: Object.assign(body, { stream: true }),
       failedResponseHandler: createJsonErrorResponseHandler({
         errorSchema: ErrorDataSchema,
-        errorToMessage: data => data.error.msg,
+        errorToMessage: data => data.errorMessage,
       }),
       successfulResponseHandler:
         createEventSourceResponseHandlerForProgress(ResponseSchema),
