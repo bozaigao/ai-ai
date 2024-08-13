@@ -2165,8 +2165,7 @@ async function streamUIWithProcess({
             render2({
               renderer: textRender,
               args: [{ content, done: false, delta: value.textDelta }],
-              streamableUI: ui,
-              isLastCall: true
+              streamableUI: ui
             });
             break;
           }
@@ -2183,6 +2182,12 @@ async function streamUIWithProcess({
           }
         }
       }
+      render2({
+        renderer: textRender,
+        args: [{ content, done: true }],
+        streamableUI: ui,
+        isLastCall: true
+      });
       await finished;
     } catch (error) {
       ui.error(error);

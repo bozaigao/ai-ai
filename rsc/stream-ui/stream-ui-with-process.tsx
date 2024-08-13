@@ -231,7 +231,6 @@ export async function streamUIWithProcess({
   (async () => {
     try {
       let content = '';
-
       const reader = forkedStream.getReader();
       while (true) {
         const { done, value } = await reader.read();
@@ -243,7 +242,6 @@ export async function streamUIWithProcess({
               renderer: textRender,
               args: [{ content, done: false, delta: value.textDelta }],
               streamableUI: ui,
-              isLastCall: true,
             });
             break;
           }
@@ -262,6 +260,12 @@ export async function streamUIWithProcess({
           }
         }
       }
+      render({
+        renderer: textRender,
+        args: [{ content, done: true }],
+        streamableUI: ui,
+        isLastCall: true,
+      });
       await finished;
     } catch (error) {
       // During the stream rendering, we don't want to throw the error to the
